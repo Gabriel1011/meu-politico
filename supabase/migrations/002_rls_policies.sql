@@ -48,6 +48,18 @@ CREATE POLICY "Users can view own profile"
   ON profile FOR SELECT
   USING (id = auth.uid());
 
+-- Staff pode ver perfis de usuários do mesmo tenant
+CREATE POLICY "Staff can view tenant profiles"
+  ON profile FOR SELECT
+  USING (
+    tenant_id = public.get_user_tenant_id()
+    AND EXISTS (
+      SELECT 1 FROM profile AS p
+      WHERE p.id = auth.uid()
+      AND p.role IN ('assessor', 'politico', 'admin')
+    )
+  );
+
 -- Usuários podem atualizar seu próprio perfil
 CREATE POLICY "Users can update own profile"
   ON profile FOR UPDATE
