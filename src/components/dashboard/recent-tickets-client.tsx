@@ -4,6 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { formatDateTime } from '@/lib/utils'
 import { TicketDetailModal } from '@/components/tickets/ticket-detail-modal'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import type { UserRole } from '@/types'
 
 interface Ticket {
@@ -21,13 +23,13 @@ interface RecentTicketsClientProps {
   role: string
 }
 
-const statusColors = {
-  nova: 'bg-blue-100 text-blue-800',
-  em_analise: 'bg-yellow-100 text-yellow-800',
-  em_andamento: 'bg-purple-100 text-purple-800',
-  resolvida: 'bg-green-100 text-green-800',
-  encerrada: 'bg-gray-100 text-gray-800',
-  cancelada: 'bg-red-100 text-red-800',
+const statusVariants = {
+  nova: 'info' as const,
+  em_analise: 'warning' as const,
+  em_andamento: 'default' as const,
+  resolvida: 'success' as const,
+  encerrada: 'secondary' as const,
+  cancelada: 'destructive' as const,
 }
 
 const statusLabels = {
@@ -62,7 +64,7 @@ export function RecentTicketsClient({ tickets, role }: RecentTicketsClientProps)
         </div>
 
         {/* Desktop - Tabela */}
-        <div className="hidden md:block rounded-lg border bg-white">
+        <Card className="hidden md:block">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -101,13 +103,9 @@ export function RecentTicketsClient({ tickets, role }: RecentTicketsClientProps)
                       {ticket.categories?.nome || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                          statusColors[ticket.status as keyof typeof statusColors]
-                        }`}
-                      >
+                      <Badge variant={statusVariants[ticket.status as keyof typeof statusVariants]}>
                         {statusLabels[ticket.status as keyof typeof statusLabels]}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDateTime(ticket.created_at)}
@@ -117,34 +115,33 @@ export function RecentTicketsClient({ tickets, role }: RecentTicketsClientProps)
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
 
         {/* Mobile - Cards */}
         <div className="md:hidden space-y-3">
           {tickets.map((ticket) => (
-            <div
+            <Card
               key={ticket.id}
               onClick={() => handleTicketClick(ticket.id)}
-              className="block cursor-pointer"
+              className="cursor-pointer hover:shadow-md transition-all active:scale-98 touch-manipulation"
             >
-              <div className="rounded-lg border bg-white p-4 shadow-sm hover:shadow-md transition-all active:scale-98 touch-manipulation">
+              <div className="p-4">
                 {/* Header do Card */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-gray-500 mb-1">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">
                       Protocolo #{ticket.ticket_number}
                     </p>
-                    <h3 className="text-sm font-semibold text-gray-900 line-clamp-2">
+                    <h3 className="text-sm font-semibold line-clamp-2">
                       {ticket.titulo}
                     </h3>
                   </div>
-                  <span
-                    className={`ml-2 shrink-0 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      statusColors[ticket.status as keyof typeof statusColors]
-                    }`}
+                  <Badge
+                    variant={statusVariants[ticket.status as keyof typeof statusVariants]}
+                    className="ml-2 shrink-0"
                   >
                     {statusLabels[ticket.status as keyof typeof statusLabels]}
-                  </span>
+                  </Badge>
                 </div>
 
                 {/* Informações do Card */}
@@ -186,7 +183,7 @@ export function RecentTicketsClient({ tickets, role }: RecentTicketsClientProps)
                   </div>
                 </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       </div>

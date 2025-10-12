@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { Card } from '@/components/ui/card'
 
 interface DashboardStatsProps {
   tenantId: string
@@ -62,16 +63,13 @@ export async function DashboardStats({ tenantId, role }: DashboardStatsProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat) => (
-        <div
-          key={stat.name}
-          className="rounded-lg border bg-white p-6 shadow-sm"
-        >
+        <Card key={stat.name} className="p-6">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-gray-600">{stat.name}</p>
+            <p className="text-sm font-medium text-muted-foreground">{stat.name}</p>
             <span className="text-2xl">{stat.icon}</span>
           </div>
           <p className="mt-2 text-3xl font-bold">{stat.value}</p>
-        </div>
+        </Card>
       ))}
     </div>
   )
