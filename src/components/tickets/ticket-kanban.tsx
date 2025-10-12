@@ -66,9 +66,14 @@ export function TicketKanban() {
       query = query.eq('user_id', user.id)
     }
 
-    const { data } = await query
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error loading tickets:', error)
+    }
 
     if (data) {
+      console.log('Tickets loaded:', data.length)
       const grouped: Partial<TicketsByStatus> = {
         nova: data.filter((t) => t.status === 'nova'),
         em_analise: data.filter((t) => t.status === 'em_analise'),
