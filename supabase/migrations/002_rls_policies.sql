@@ -16,343 +16,306 @@ ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 -- ============================================
 -- Helper Functions (SECURITY DEFINER)
 -- ============================================
--- Nota: Estas funções bypassam RLS para evitar recursão infinita
--- Devem ser criadas ANTES das policies que as utilizam
+-- IMPORTANTE: Estas funções bypassam RLS do profile
+-- SECURITY DEFINER faz a função rodar com privilégios do owner (postgres)
+-- Isso permite ler profile sem triggerar as policies de profile
 
-CREATE OR REPLACE FUNCTION public.auth_user_tenant_id()
+CREATE OR REPLACE FUNCTION public.get_my_tenant_id()
 RETURNS UUID
-LANGUAGE SQL
+LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public
 STABLE
 AS $$
-  SELECT tenant_id FROM public.profile WHERE id = auth.uid() LIMIT 1;
+  SELECT tenant_id FROM profile WHERE id = auth.uid() LIMIT 1;
 $$;
 
-CREATE OR REPLACE FUNCTION public.auth_user_role()
+CREATE OR REPLACE FUNCTION public.get_my_role()
 RETURNS TEXT
-LANGUAGE SQL
+LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public
 STABLE
 AS $$
-  SELECT role FROM public.profile WHERE id = auth.uid() LIMIT 1;
+  SELECT role FROM profile WHERE id = auth.uid() LIMIT 1;
 $$;
 
-CREATE OR REPLACE FUNCTION public.auth_user_is_staff()
+CREATE OR REPLACE FUNCTION public.is_staff()
 RETURNS BOOLEAN
-LANGUAGE SQL
+LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public
 STABLE
 AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.profile
-    WHERE id = auth.uid()
-    AND role IN ('assessor', 'politico')
+  SELECT COALESCE(
+    (SELECT role IN ('assessor', 'politico') FROM profile WHERE id = auth.uid() LIMIT 1),
+    false
   );
 $$;
 
-CREATE OR REPLACE FUNCTION public.auth_user_is_superadmin()
+CREATE OR REPLACE FUNCTION public.is_superadmin()
 RETURNS BOOLEAN
-LANGUAGE SQL
+LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public
 STABLE
 AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.profile
-    WHERE id = auth.uid()
-    AND role = 'superadmin'
+  SELECT COALESCE(
+    (SELECT role = 'superadmin' FROM profile WHERE id = auth.uid() LIMIT 1),
+    false
   );
 $$;
+
+-- ============================================
+-- PROFILE Policies
+-- ============================================
+-- REGRA ANTI-RECURSÃO: Policies de profile NÃO podem usar funções helper
+-- nem fazer SELECT em profile (causaria loop infinito)
+
+-- Usuários veem apenas seu próprio perfil
+CREATE POLICY "profile_select_own"
+  ON profile FOR SELECT
+  TO authenticated
+  USING (id = auth.uid());
+
+-- Usuários podem atualizar apenas seu próprio perfil
+CREATE POLICY "profile_update_own"
+  ON profile FOR UPDATE
+  TO authenticated
+  USING (id = auth.uid())
+  WITH CHECK (id = auth.uid());
+
+-- Service role tem acesso total (para migrations, funções SECURITY DEFINER)
+CREATE POLICY "profile_service_role_all"
+  ON profile FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
 
 -- ============================================
 -- TENANTS Policies
 -- ============================================
 
--- Todos podem visualizar tenants ativos (para landing pages públicas)
-CREATE POLICY "Anyone can view active tenants"
+-- Todos podem ver tenants ativos (landing pages públicas)
+CREATE POLICY "tenants_select_public"
   ON tenants FOR SELECT
   USING (ativo = true);
 
--- Superadmins podem visualizar todos os tenants
-CREATE POLICY "Superadmins can view all tenants"
+-- Superadmins podem ver todos os tenants
+CREATE POLICY "tenants_select_superadmin"
   ON tenants FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM profile
-      WHERE profile.id = auth.uid()
-      AND profile.role = 'superadmin'
-    )
-  );
+  USING (public.is_superadmin() = true);
 
 -- Políticos podem atualizar seu próprio tenant
-CREATE POLICY "Politicos can update own tenant"
+CREATE POLICY "tenants_update_politico"
   ON tenants FOR UPDATE
   USING (
-    id = public.auth_user_tenant_id()
-    AND EXISTS (
-      SELECT 1 FROM profile
-      WHERE profile.id = auth.uid()
-      AND profile.role = 'politico'
-    )
+    id = public.get_my_tenant_id()
+    AND public.get_my_role() = 'politico'
   );
 
 -- Apenas superadmins podem criar/deletar tenants
-CREATE POLICY "Superadmins can manage all tenants"
-  ON tenants FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profile
-      WHERE profile.id = auth.uid()
-      AND profile.role = 'superadmin'
-    )
-  );
+CREATE POLICY "tenants_insert_superadmin"
+  ON tenants FOR INSERT
+  WITH CHECK (public.is_superadmin() = true);
 
--- ============================================
--- PROFILE Policies
--- ============================================
-
--- Usuários podem ver seu próprio perfil
-CREATE POLICY "Users can view own profile"
-  ON profile FOR SELECT
-  USING (id = auth.uid());
-
--- Staff pode ver perfis de usuários do mesmo tenant (sem recursão)
-CREATE POLICY "Staff can view tenant profiles"
-  ON profile FOR SELECT
-  USING (
-    public.auth_user_is_staff() = true
-    AND tenant_id = public.auth_user_tenant_id()
-  );
-
--- Superadmins podem ver todos os perfis
-CREATE POLICY "Superadmins can view all profiles"
-  ON profile FOR SELECT
-  USING (public.auth_user_is_superadmin() = true);
-
--- Usuários podem atualizar seu próprio perfil
-CREATE POLICY "Users can update own profile"
-  ON profile FOR UPDATE
-  USING (id = auth.uid());
-
--- Políticos podem gerenciar perfis do seu tenant
-CREATE POLICY "Politicos can manage tenant profiles"
-  ON profile FOR ALL
-  USING (
-    tenant_id = public.auth_user_tenant_id()
-    AND EXISTS (
-      SELECT 1 FROM profile p
-      WHERE p.id = auth.uid()
-      AND p.role = 'politico'
-    )
-  );
-
--- Superadmins podem gerenciar qualquer perfil
-CREATE POLICY "Superadmins can manage all profiles"
-  ON profile FOR ALL
-  USING (public.auth_user_is_superadmin() = true);
+CREATE POLICY "tenants_delete_superadmin"
+  ON tenants FOR DELETE
+  USING (public.is_superadmin() = true);
 
 -- ============================================
 -- CATEGORIES Policies
 -- ============================================
 
--- Usuários podem ver categorias ativas do seu tenant
-CREATE POLICY "Users can view tenant categories"
+-- Usuários veem categorias ativas do seu tenant
+CREATE POLICY "categories_select_tenant"
   ON categories FOR SELECT
   USING (
-    ativa = true AND
-    tenant_id = public.auth_user_tenant_id()
+    ativa = true
+    AND tenant_id = public.get_my_tenant_id()
   );
 
--- Assessores e políticos podem gerenciar categorias do seu tenant
-CREATE POLICY "Staff can manage categories"
+-- Superadmins veem todas as categorias
+CREATE POLICY "categories_select_superadmin"
+  ON categories FOR SELECT
+  USING (public.is_superadmin() = true);
+
+-- Staff pode gerenciar categorias do seu tenant
+CREATE POLICY "categories_all_staff"
   ON categories FOR ALL
   USING (
-    tenant_id = public.auth_user_tenant_id()
-    AND public.auth_user_is_staff() = true
+    tenant_id = public.get_my_tenant_id()
+    AND public.is_staff() = true
   );
 
 -- Superadmins podem gerenciar categorias de qualquer tenant
-CREATE POLICY "Superadmins can manage all categories"
+CREATE POLICY "categories_all_superadmin"
   ON categories FOR ALL
-  USING (public.auth_user_is_superadmin() = true);
+  USING (public.is_superadmin() = true);
 
 -- ============================================
 -- TICKETS Policies
 -- ============================================
 
--- Usuários podem ver tickets do seu tenant
-CREATE POLICY "Users can view tenant tickets"
+-- Usuários veem tickets do seu tenant
+CREATE POLICY "tickets_select_tenant"
   ON tickets FOR SELECT
-  USING (tenant_id = public.auth_user_tenant_id());
+  USING (tenant_id = public.get_my_tenant_id());
 
--- Superadmins podem ver todos os tickets
-CREATE POLICY "Superadmins can view all tickets"
+-- Superadmins veem todos os tickets
+CREATE POLICY "tickets_select_superadmin"
   ON tickets FOR SELECT
-  USING (public.auth_user_is_superadmin() = true);
+  USING (public.is_superadmin() = true);
 
 -- Usuários podem criar tickets no seu tenant
-CREATE POLICY "Users can create tickets"
+CREATE POLICY "tickets_insert_user"
   ON tickets FOR INSERT
   WITH CHECK (
-    user_id = auth.uid() AND
-    tenant_id = public.auth_user_tenant_id()
+    user_id = auth.uid()
+    AND tenant_id = public.get_my_tenant_id()
   );
 
--- Apenas assessores e políticos podem atualizar tickets
-CREATE POLICY "Staff can update tickets"
+-- Staff pode atualizar tickets do seu tenant
+CREATE POLICY "tickets_update_staff"
   ON tickets FOR UPDATE
   USING (
-    tenant_id = public.auth_user_tenant_id()
-    AND public.auth_user_is_staff() = true
+    tenant_id = public.get_my_tenant_id()
+    AND public.is_staff() = true
   );
 
 -- Superadmins podem atualizar qualquer ticket
-CREATE POLICY "Superadmins can update all tickets"
+CREATE POLICY "tickets_update_superadmin"
   ON tickets FOR UPDATE
-  USING (public.auth_user_is_superadmin() = true);
+  USING (public.is_superadmin() = true);
 
--- Usuários só podem deletar seus próprios tickets se ainda não estiverem em análise
-CREATE POLICY "Users can delete own pending tickets"
+-- Usuários podem deletar seus próprios tickets se ainda não estiverem em análise
+CREATE POLICY "tickets_delete_own"
   ON tickets FOR DELETE
   USING (
-    user_id = auth.uid() AND
-    status = 'nova'
+    user_id = auth.uid()
+    AND status = 'nova'
   );
 
 -- Superadmins podem deletar qualquer ticket
-CREATE POLICY "Superadmins can delete all tickets"
+CREATE POLICY "tickets_delete_superadmin"
   ON tickets FOR DELETE
-  USING (public.auth_user_is_superadmin() = true);
+  USING (public.is_superadmin() = true);
 
 -- ============================================
 -- TICKET_COMMENTS Policies
 -- ============================================
 
--- Usuários podem ver comentários públicos + seus comentários privados
-CREATE POLICY "Users can view comments"
+-- Usuários veem comentários públicos OU seus próprios OU se forem staff
+CREATE POLICY "comments_select_user"
   ON ticket_comments FOR SELECT
   USING (
-    publico = true OR
-    autor_id = auth.uid() OR
-    public.auth_user_is_staff() = true
+    publico = true
+    OR autor_id = auth.uid()
+    OR public.is_staff() = true
   );
 
--- Superadmins podem ver todos os comentários
-CREATE POLICY "Superadmins can view all comments"
+-- Superadmins veem todos os comentários
+CREATE POLICY "comments_select_superadmin"
   ON ticket_comments FOR SELECT
-  USING (public.auth_user_is_superadmin() = true);
+  USING (public.is_superadmin() = true);
 
 -- Usuários podem comentar em tickets do seu tenant
-CREATE POLICY "Users can create comments"
+CREATE POLICY "comments_insert_user"
   ON ticket_comments FOR INSERT
   WITH CHECK (
-    autor_id = auth.uid() AND
-    EXISTS (
+    autor_id = auth.uid()
+    AND EXISTS (
       SELECT 1 FROM tickets
       WHERE tickets.id = ticket_id
-      AND tickets.tenant_id = public.auth_user_tenant_id()
+      AND tickets.tenant_id = public.get_my_tenant_id()
     )
   );
 
 -- Superadmins podem comentar em qualquer ticket
-CREATE POLICY "Superadmins can create comments"
+CREATE POLICY "comments_insert_superadmin"
   ON ticket_comments FOR INSERT
-  WITH CHECK (
-    autor_id = auth.uid() AND
-    public.auth_user_is_superadmin() = true
-  );
+  WITH CHECK (public.is_superadmin() = true);
 
 -- Apenas o autor pode atualizar seu comentário (nas primeiras 15 minutos)
-CREATE POLICY "Authors can update own recent comments"
+CREATE POLICY "comments_update_author"
   ON ticket_comments FOR UPDATE
   USING (
-    autor_id = auth.uid() AND
-    created_at > NOW() - INTERVAL '15 minutes'
+    autor_id = auth.uid()
+    AND created_at > NOW() - INTERVAL '15 minutes'
   );
 
 -- Superadmins podem atualizar qualquer comentário
-CREATE POLICY "Superadmins can update all comments"
+CREATE POLICY "comments_update_superadmin"
   ON ticket_comments FOR UPDATE
-  USING (public.auth_user_is_superadmin() = true);
+  USING (public.is_superadmin() = true);
 
 -- ============================================
 -- EVENTS Policies
 -- ============================================
 
 -- Qualquer um pode ver eventos públicos
-CREATE POLICY "Anyone can view public events"
+CREATE POLICY "events_select_public"
   ON events FOR SELECT
   USING (publico = true);
 
--- Usuários autenticados podem ver todos eventos do seu tenant
-CREATE POLICY "Users can view tenant events"
+-- Usuários autenticados veem eventos do seu tenant
+CREATE POLICY "events_select_tenant"
   ON events FOR SELECT
-  USING (tenant_id = public.auth_user_tenant_id());
+  USING (tenant_id = public.get_my_tenant_id());
 
--- Superadmins podem ver todos os eventos
-CREATE POLICY "Superadmins can view all events"
+-- Superadmins veem todos os eventos
+CREATE POLICY "events_select_superadmin"
   ON events FOR SELECT
-  USING (public.auth_user_is_superadmin() = true);
+  USING (public.is_superadmin() = true);
 
--- Assessores e políticos podem gerenciar eventos do seu tenant
-CREATE POLICY "Staff can manage events"
+-- Staff pode gerenciar eventos do seu tenant
+CREATE POLICY "events_all_staff"
   ON events FOR ALL
   USING (
-    tenant_id = public.auth_user_tenant_id()
-    AND public.auth_user_is_staff() = true
+    tenant_id = public.get_my_tenant_id()
+    AND public.is_staff() = true
   );
 
 -- Superadmins podem gerenciar eventos de qualquer tenant
-CREATE POLICY "Superadmins can manage all events"
+CREATE POLICY "events_all_superadmin"
   ON events FOR ALL
-  USING (public.auth_user_is_superadmin() = true);
+  USING (public.is_superadmin() = true);
 
 -- ============================================
 -- SETTINGS Policies
 -- ============================================
 
--- Políticos podem ver e modificar settings do seu tenant
-CREATE POLICY "Politicos can manage settings"
+-- Políticos podem gerenciar settings do seu tenant
+CREATE POLICY "settings_all_politico"
   ON settings FOR ALL
   USING (
-    tenant_id = public.auth_user_tenant_id()
-    AND EXISTS (
-      SELECT 1 FROM profile
-      WHERE id = auth.uid()
-      AND role = 'politico'
-    )
+    tenant_id = public.get_my_tenant_id()
+    AND public.get_my_role() = 'politico'
   );
 
 -- Superadmins podem gerenciar settings de qualquer tenant
-CREATE POLICY "Superadmins can manage all settings"
+CREATE POLICY "settings_all_superadmin"
   ON settings FOR ALL
-  USING (public.auth_user_is_superadmin() = true);
+  USING (public.is_superadmin() = true);
 
 -- ============================================
 -- ACTIVITY_LOGS Policies
 -- ============================================
 
 -- Políticos podem ver logs do seu tenant
-CREATE POLICY "Politicos can view tenant logs"
+CREATE POLICY "logs_select_politico"
   ON activity_logs FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM profile
-      WHERE profile.id = auth.uid()
-      AND profile.role = 'politico'
-      AND profile.tenant_id = activity_logs.tenant_id
-    )
+    tenant_id = public.get_my_tenant_id()
+    AND public.get_my_role() = 'politico'
   );
 
 -- Superadmins podem ver todos os logs
-CREATE POLICY "Superadmins can view all logs"
+CREATE POLICY "logs_select_superadmin"
   ON activity_logs FOR SELECT
-  USING (public.auth_user_is_superadmin() = true);
+  USING (public.is_superadmin() = true);
 
--- Sistema pode inserir logs (via service role ou authenticated users)
-CREATE POLICY "System can insert logs"
+-- Sistema pode inserir logs
+CREATE POLICY "logs_insert_system"
   ON activity_logs FOR INSERT
   WITH CHECK (true);

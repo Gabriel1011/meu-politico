@@ -233,3 +233,28 @@ CREATE TRIGGER update_events_updated_at BEFORE UPDATE ON events
 
 CREATE TRIGGER update_settings_updated_at BEFORE UPDATE ON settings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- Additional Indexes for Performance
+-- ============================================
+
+-- Índices compostos para queries frequentes
+CREATE INDEX idx_tickets_tenant_status ON tickets(tenant_id, status);
+CREATE INDEX idx_tickets_tenant_created ON tickets(tenant_id, created_at DESC);
+CREATE INDEX idx_tickets_user_status ON tickets(user_id, status);
+
+-- Índice para busca de tickets por categoria
+CREATE INDEX idx_tickets_categoria_status ON tickets(categoria_id, status) WHERE categoria_id IS NOT NULL;
+
+-- Índice para eventos futuros (queries comuns)
+-- Nota: Não usamos WHERE com NOW() pois não é IMMUTABLE. Índice completo é OK.
+CREATE INDEX idx_events_tenant_inicio ON events(tenant_id, inicio);
+
+-- Índice para comentários por ticket (ordenados por data)
+CREATE INDEX idx_ticket_comments_ticket_created ON ticket_comments(ticket_id, created_at);
+
+-- Índice para perfis por tenant e role (administrativo)
+CREATE INDEX idx_profile_tenant_role ON profile(tenant_id, role) WHERE tenant_id IS NOT NULL;
+
+-- Índice para activity_logs por tenant e data (auditoria)
+CREATE INDEX idx_activity_logs_tenant_created ON activity_logs(tenant_id, created_at DESC) WHERE tenant_id IS NOT NULL;
