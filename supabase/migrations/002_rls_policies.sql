@@ -22,14 +22,37 @@ CREATE POLICY "Anyone can view active tenants"
   ON tenants FOR SELECT
   USING (ativo = true);
 
--- Apenas admins podem modificar tenants
-CREATE POLICY "Admins can modify tenants"
+-- Superadmins podem visualizar todos os tenants
+CREATE POLICY "Superadmins can view all tenants"
+  ON tenants FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM profile
+      WHERE profile.id = auth.uid()
+      AND profile.role = 'superadmin'
+    )
+  );
+
+-- Políticos podem atualizar seu próprio tenant
+CREATE POLICY "Politicos can update own tenant"
+  ON tenants FOR UPDATE
+  USING (
+    id = public.auth_user_tenant_id()
+    AND EXISTS (
+      SELECT 1 FROM profile
+      WHERE profile.id = auth.uid()
+      AND profile.role = 'politico'
+    )
+  );
+
+-- Apenas superadmins podem criar/deletar tenants
+CREATE POLICY "Superadmins can manage all tenants"
   ON tenants FOR ALL
   USING (
     EXISTS (
       SELECT 1 FROM profile
       WHERE profile.id = auth.uid()
-      AND profile.role = 'admin'
+      AND profile.role = 'superadmin'
     )
   );
 
@@ -48,6 +71,16 @@ AS $$
   SELECT tenant_id FROM public.profile WHERE id = auth.uid() LIMIT 1;
 $$;
 
+CREATE OR REPLACE FUNCTION public.auth_user_role()
+RETURNS TEXT
+LANGUAGE SQL
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT role FROM public.profile WHERE id = auth.uid() LIMIT 1;
+$$;
+
 CREATE OR REPLACE FUNCTION public.auth_user_is_staff()
 RETURNS BOOLEAN
 LANGUAGE SQL
@@ -58,7 +91,21 @@ AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.profile
     WHERE id = auth.uid()
-    AND role IN ('assessor', 'politico', 'admin')
+    AND role IN ('assessor', 'politico')
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.auth_user_is_superadmin()
+RETURNS BOOLEAN
+LANGUAGE SQL
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profile
+    WHERE id = auth.uid()
+    AND role = 'superadmin'
   );
 $$;
 
@@ -75,10 +122,32 @@ CREATE POLICY "Staff can view tenant profiles"
     AND tenant_id = public.auth_user_tenant_id()
   );
 
+-- Superadmins podem ver todos os perfis
+CREATE POLICY "Superadmins can view all profiles"
+  ON profile FOR SELECT
+  USING (public.auth_user_is_superadmin() = true);
+
 -- Usuários podem atualizar seu próprio perfil
 CREATE POLICY "Users can update own profile"
   ON profile FOR UPDATE
   USING (id = auth.uid());
+
+-- Políticos podem gerenciar perfis do seu tenant
+CREATE POLICY "Politicos can manage tenant profiles"
+  ON profile FOR ALL
+  USING (
+    tenant_id = public.auth_user_tenant_id()
+    AND EXISTS (
+      SELECT 1 FROM profile p
+      WHERE p.id = auth.uid()
+      AND p.role = 'politico'
+    )
+  );
+
+-- Superadmins podem gerenciar qualquer perfil
+CREATE POLICY "Superadmins can manage all profiles"
+  ON profile FOR ALL
+  USING (public.auth_user_is_superadmin() = true);
 
 -- ============================================
 -- CATEGORIES Policies
