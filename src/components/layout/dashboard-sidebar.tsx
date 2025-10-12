@@ -43,6 +43,12 @@ export function DashboardSidebar({ userRole }: DashboardSidebarProps) {
       roles: ['cidadao', 'assessor', 'politico', 'admin'],
     },
     {
+      name: 'Notificações',
+      href: '/painel/notificacoes',
+      icon: '🔔',
+      roles: ['cidadao', 'assessor', 'politico', 'admin', 'superadmin'],
+    },
+    {
       name: 'Nova Ocorrência',
       href: '/painel/ocorrencias/nova',
       icon: '➕',

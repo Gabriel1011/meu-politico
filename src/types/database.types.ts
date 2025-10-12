@@ -207,6 +207,41 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+      },
+      notifications: {
+        Row: {
+          id: string
+          tenant_id: string
+          destinatario_id: string
+          titulo: string
+          mensagem: string | null
+          tipo: string
+          metadados: Json
+          lido_em: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          destinatario_id: string
+          titulo: string
+          mensagem?: string | null
+          tipo?: string
+          metadados?: Json
+          lido_em?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          destinatario_id?: string
+          titulo?: string
+          mensagem?: string | null
+          tipo?: string
+          metadados?: Json
+          lido_em?: string | null
+          created_at?: string
+        }
       }
     }
     Enums: {

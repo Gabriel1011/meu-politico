@@ -21,7 +21,8 @@
     "migration:repair": "supabase migration repair --linked",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
-    "supabase:status": "supabase status"
+    "supabase:status": "supabase status",
+    "seed:notifications": "node scripts/seed-notifications.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",
@@ -32,6 +33,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.0",
     "date-fns": "^3.0.0",
+    "dotenv": "^17.2.3",
     "lucide-react": "^0.400.0",
     "next": "^15.0.0",
     "react": "^19.0.0",

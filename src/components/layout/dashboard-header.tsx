@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { NotificationBell } from '@/components/layout/notification-bell'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -52,6 +53,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
+          <NotificationBell />
           {/* Desktop View */}
           <div className="hidden md:flex items-center gap-4">
             <div className="text-right">

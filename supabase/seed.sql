@@ -237,6 +237,51 @@ BEGIN
   );
 END $$;
 
+-- ============================================
+-- NOTIFICAÇÕES DE EXEMPLO
+-- ============================================
+INSERT INTO public.notifications (
+  id,
+  tenant_id,
+  destinatario_id,
+  titulo,
+  mensagem,
+  tipo,
+  created_at,
+  lido_em
+) VALUES
+  (
+    '5a0d6d85-6c29-4f90-b4c7-7f7d8a4f5d10',
+    '10b101b9-9218-46d0-82d6-36643a906865',
+    '33333333-3333-3333-3333-333333333333',
+    'Nova ocorrência registrada',
+    'Uma nova ocorrência foi cadastrada e aguarda triagem.',
+    'sistema',
+    NOW() - INTERVAL '2 hours',
+    NULL
+  ),
+  (
+    '3b291f40-6cdf-4c8f-9c2e-4a6a1ec6b329',
+    '10b101b9-9218-46d0-82d6-36643a906865',
+    '33333333-3333-3333-3333-333333333333',
+    'Ocorrência resolvida',
+    'A ocorrência “Buraco na Rua das Flores” foi marcada como resolvida.',
+    'sistema',
+    NOW() - INTERVAL '1 day',
+    NOW() - INTERVAL '12 hours'
+  ),
+  (
+    'c9d0f48c-9274-4cc7-8fb8-0ac751ef31ea',
+    '10b101b9-9218-46d0-82d6-36643a906865',
+    '22222222-2222-2222-2222-222222222222',
+    'Agenda atualizada',
+    'A reunião com a comunidade do bairro Jardim das Flores foi reagendada.',
+    'agenda',
+    NOW() - INTERVAL '6 hours',
+    NULL
+  )
+ON CONFLICT (id) DO NOTHING;
+
 COMMIT;
 
 -- ============================================
