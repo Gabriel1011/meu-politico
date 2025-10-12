@@ -58,7 +58,7 @@ export function DashboardSidebar({ userRole }: DashboardSidebarProps) {
       name: 'Agenda',
       href: '/painel/agenda',
       icon: '📅',
-      roles: ['assessor', 'politico', 'admin'],
+      roles: ['cidadao', 'assessor', 'politico', 'admin'],
     },
     {
       name: 'Configurações',

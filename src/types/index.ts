@@ -13,6 +13,10 @@ export type Profile = Tables<'profile'>
 export type Category = Tables<'categories'>
 export type Ticket = Tables<'tickets'>
 export type TicketComment = Tables<'ticket_comments'>
+export type Event = Tables<'events'>
+
+// Legacy alias for backwards compatibility during migration
+export type AgendaEvent = Event
 
 // Extended types with relations
 export type TicketWithRelations = Ticket & {

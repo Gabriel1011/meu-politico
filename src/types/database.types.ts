@@ -243,6 +243,47 @@ export interface Database {
           created_at?: string
         }
       }
+      events: {
+        Row: {
+          id: string
+          tenant_id: string
+          title: string
+          description: string
+          location: string | null
+          start_date: string
+          end_date: string
+          banner_url: string | null
+          published: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          title: string
+          description: string
+          location?: string | null
+          start_date: string
+          end_date: string
+          banner_url?: string | null
+          published?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          title?: string
+          description?: string
+          location?: string | null
+          start_date?: string
+          end_date?: string
+          banner_url?: string | null
+          published?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Enums: {
       [_ in never]: never

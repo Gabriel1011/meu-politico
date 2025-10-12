@@ -156,3 +156,143 @@
     -webkit-line-clamp: 2;
   }
 }
+
+/* React Big Calendar Customization */
+.rbc-calendar {
+  font-family: inherit;
+}
+
+.rbc-header {
+  padding: 10px 3px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.rbc-today {
+  background-color: hsl(var(--primary) / 0.05);
+}
+
+.rbc-event {
+  background-color: hsl(var(--primary));
+  border-radius: 4px;
+  color: hsl(var(--primary-foreground));
+  padding: 2px 5px;
+  font-size: 0.875rem;
+  border: none;
+}
+
+.rbc-event:hover {
+  background-color: hsl(var(--primary) / 0.9);
+}
+
+.rbc-event.rbc-selected {
+  background-color: hsl(var(--primary) / 0.8);
+}
+
+.rbc-off-range-bg {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.rbc-toolbar {
+  padding: 10px 0;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.rbc-toolbar button {
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  min-height: 36px;
+  min-width: auto;
+}
+
+.rbc-toolbar button:hover {
+  background-color: hsl(var(--muted));
+  border-color: hsl(var(--border));
+}
+
+.rbc-toolbar button:active,
+.rbc-toolbar button.rbc-active {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+}
+
+.rbc-toolbar-label {
+  font-weight: 600;
+  font-size: 1rem;
+  color: hsl(var(--foreground));
+}
+
+.rbc-month-view,
+.rbc-time-view,
+.rbc-agenda-view {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background-color: hsl(var(--card));
+}
+
+.rbc-day-bg + .rbc-day-bg,
+.rbc-month-row + .rbc-month-row {
+  border-top: 1px solid hsl(var(--border));
+}
+
+.rbc-date-cell {
+  padding: 4px;
+  text-align: right;
+}
+
+.rbc-date-cell > a {
+  color: hsl(var(--foreground));
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+
+.rbc-date-cell.rbc-now > a {
+  color: hsl(var(--primary));
+  font-weight: 600;
+}
+
+.rbc-show-more {
+  color: hsl(var(--primary));
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: transparent;
+  padding: 2px 4px;
+  border: none;
+  cursor: pointer;
+}
+
+.rbc-show-more:hover {
+  text-decoration: underline;
+}
+
+/* Responsive calendar */
+@media (max-width: 640px) {
+  .rbc-toolbar {
+    flex-direction: column;
+  }
+
+  .rbc-toolbar button {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+  }
+
+  .rbc-toolbar-label {
+    order: -1;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+}

@@ -62,7 +62,10 @@
       "Bash(git filter-branch -f --msg-filter '\nsed \"\"/🤖 Generated with \\[Claude Code\\]/d\"\" | sed \"\"/Co-Authored-By: Claude/d\"\" | sed \"\"/^$/N;/^\\n$/D\"\"\n' HEAD~7..HEAD)",
       "Bash(git filter-branch:*)",
       "Bash(git log:*)",
-      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch:*)"
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch:*)",
+      "Bash(npx shadcn-ui@latest add:*)",
+      "Bash(git restore:*)",
+      "Bash(npm run type-check:*)"
     ],
     "deny": [],
     "ask": []
