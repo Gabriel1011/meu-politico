@@ -2,10 +2,7 @@
 -- MIGRATION 001: Initial Schema
 -- Descrição: Cria schema inicial com tenants, users, categories, tickets
 -- ============================================
-
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- Nota: As extensões foram movidas para 000_extensions.sql
 
 -- ============================================
 -- TENANTS (Gabinetes)

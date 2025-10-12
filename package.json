@@ -14,7 +14,7 @@
     "db:status": "supabase db diff --linked",
     "db:push": "supabase db push --linked",
     "db:pull": "supabase db pull --linked",
-    "db:reset": "supabase db reset --linked",
+    "db:reset": "supabase db reset --linked --yes",
     "db:reset:local": "supabase db reset",
     "migration:list": "supabase migration list --linked",
     "migration:new": "supabase migration new",

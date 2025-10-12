@@ -37,27 +37,42 @@ CREATE POLICY "Admins can modify tenants"
 -- PROFILE Policies
 -- ============================================
 
--- Função helper para evitar recursão no RLS
-CREATE OR REPLACE FUNCTION public.get_user_tenant_id()
-RETURNS UUID AS $$
+-- Funções helper com SECURITY DEFINER que bypassam RLS (evitam recursão infinita)
+CREATE OR REPLACE FUNCTION public.auth_user_tenant_id()
+RETURNS UUID
+LANGUAGE SQL
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
   SELECT tenant_id FROM public.profile WHERE id = auth.uid() LIMIT 1;
-$$ LANGUAGE SQL SECURITY DEFINER STABLE;
+$$;
+
+CREATE OR REPLACE FUNCTION public.auth_user_is_staff()
+RETURNS BOOLEAN
+LANGUAGE SQL
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profile
+    WHERE id = auth.uid()
+    AND role IN ('assessor', 'politico', 'admin')
+  );
+$$;
 
 -- Usuários podem ver seu próprio perfil
 CREATE POLICY "Users can view own profile"
   ON profile FOR SELECT
   USING (id = auth.uid());
 
--- Staff pode ver perfis de usuários do mesmo tenant (usando subquery direta para evitar recursão)
+-- Staff pode ver perfis de usuários do mesmo tenant (sem recursão)
 CREATE POLICY "Staff can view tenant profiles"
   ON profile FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM profile AS my_profile
-      WHERE my_profile.id = auth.uid()
-      AND my_profile.role IN ('assessor', 'politico', 'admin')
-      AND my_profile.tenant_id = profile.tenant_id
-    )
+    public.auth_user_is_staff() = true
+    AND tenant_id = public.auth_user_tenant_id()
   );
 
 -- Usuários podem atualizar seu próprio perfil
@@ -74,19 +89,15 @@ CREATE POLICY "Users can view tenant categories"
   ON categories FOR SELECT
   USING (
     ativa = true AND
-    tenant_id = public.get_user_tenant_id()
+    tenant_id = public.auth_user_tenant_id()
   );
 
 -- Assessores e políticos podem gerenciar categorias
 CREATE POLICY "Staff can manage categories"
   ON categories FOR ALL
   USING (
-    tenant_id = public.get_user_tenant_id()
-    AND EXISTS (
-      SELECT 1 FROM profile
-      WHERE id = auth.uid()
-      AND role IN ('assessor', 'politico', 'admin')
-    )
+    tenant_id = public.auth_user_tenant_id()
+    AND public.auth_user_is_staff() = true
   );
 
 -- ============================================
@@ -96,26 +107,22 @@ CREATE POLICY "Staff can manage categories"
 -- Usuários podem ver tickets do seu tenant
 CREATE POLICY "Users can view tenant tickets"
   ON tickets FOR SELECT
-  USING (tenant_id = public.get_user_tenant_id());
+  USING (tenant_id = public.auth_user_tenant_id());
 
 -- Usuários podem criar tickets no seu tenant
 CREATE POLICY "Users can create tickets"
   ON tickets FOR INSERT
   WITH CHECK (
     user_id = auth.uid() AND
-    tenant_id = public.get_user_tenant_id()
+    tenant_id = public.auth_user_tenant_id()
   );
 
 -- Apenas assessores e políticos podem atualizar tickets
 CREATE POLICY "Staff can update tickets"
   ON tickets FOR UPDATE
   USING (
-    tenant_id = public.get_user_tenant_id()
-    AND EXISTS (
-      SELECT 1 FROM profile
-      WHERE id = auth.uid()
-      AND role IN ('assessor', 'politico', 'admin')
-    )
+    tenant_id = public.auth_user_tenant_id()
+    AND public.auth_user_is_staff() = true
   );
 
 -- Usuários só podem deletar seus próprios tickets se ainda não estiverem em análise
@@ -136,12 +143,7 @@ CREATE POLICY "Users can view comments"
   USING (
     publico = true OR
     autor_id = auth.uid() OR
-    EXISTS (
-      SELECT 1 FROM profile
-      WHERE profile.id = auth.uid()
-      AND profile.role IN ('assessor', 'politico', 'admin')
-      AND profile.tenant_id = public.get_user_tenant_id()
-    )
+    public.auth_user_is_staff() = true
   );
 
 -- Usuários podem comentar em tickets do seu tenant
@@ -152,7 +154,7 @@ CREATE POLICY "Users can create comments"
     EXISTS (
       SELECT 1 FROM tickets
       WHERE tickets.id = ticket_id
-      AND tickets.tenant_id = public.get_user_tenant_id()
+      AND tickets.tenant_id = public.auth_user_tenant_id()
     )
   );
 
@@ -176,18 +178,14 @@ CREATE POLICY "Anyone can view public events"
 -- Usuários autenticados podem ver todos eventos do seu tenant
 CREATE POLICY "Users can view tenant events"
   ON events FOR SELECT
-  USING (tenant_id = public.get_user_tenant_id());
+  USING (tenant_id = public.auth_user_tenant_id());
 
 -- Assessores e políticos podem gerenciar eventos
 CREATE POLICY "Staff can manage events"
   ON events FOR ALL
   USING (
-    tenant_id = public.get_user_tenant_id()
-    AND EXISTS (
-      SELECT 1 FROM profile
-      WHERE id = auth.uid()
-      AND role IN ('assessor', 'politico', 'admin')
-    )
+    tenant_id = public.auth_user_tenant_id()
+    AND public.auth_user_is_staff() = true
   );
 
 -- ============================================
@@ -198,7 +196,7 @@ CREATE POLICY "Staff can manage events"
 CREATE POLICY "Politicos can manage settings"
   ON settings FOR ALL
   USING (
-    tenant_id = public.get_user_tenant_id()
+    tenant_id = public.auth_user_tenant_id()
     AND EXISTS (
       SELECT 1 FROM profile
       WHERE id = auth.uid()

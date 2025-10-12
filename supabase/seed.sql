@@ -104,6 +104,7 @@ INSERT INTO auth.users (
 ON CONFLICT (id) DO NOTHING;
 
 -- Profiles dos usuários
+-- Usar INSERT ... ON CONFLICT UPDATE para garantir que os dados corretos sejam inseridos
 INSERT INTO public.profile (id, tenant_id, email, nome_completo, role, created_at, updated_at) VALUES
   (
     '11111111-1111-1111-1111-111111111111',
@@ -132,7 +133,12 @@ INSERT INTO public.profile (id, tenant_id, email, nome_completo, role, created_a
     NOW(),
     NOW()
   )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+  tenant_id = EXCLUDED.tenant_id,
+  email = EXCLUDED.email,
+  nome_completo = EXCLUDED.nome_completo,
+  role = EXCLUDED.role,
+  updated_at = NOW();
 
 -- ============================================
 -- TICKETS DE EXEMPLO
