@@ -48,15 +48,15 @@ CREATE POLICY "Users can view own profile"
   ON profile FOR SELECT
   USING (id = auth.uid());
 
--- Staff pode ver perfis de usuários do mesmo tenant
+-- Staff pode ver perfis de usuários do mesmo tenant (usando subquery direta para evitar recursão)
 CREATE POLICY "Staff can view tenant profiles"
   ON profile FOR SELECT
   USING (
-    tenant_id = public.get_user_tenant_id()
-    AND EXISTS (
-      SELECT 1 FROM profile AS p
-      WHERE p.id = auth.uid()
-      AND p.role IN ('assessor', 'politico', 'admin')
+    EXISTS (
+      SELECT 1 FROM profile AS my_profile
+      WHERE my_profile.id = auth.uid()
+      AND my_profile.role IN ('assessor', 'politico', 'admin')
+      AND my_profile.tenant_id = profile.tenant_id
     )
   );
 
