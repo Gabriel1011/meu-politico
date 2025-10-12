@@ -3,8 +3,16 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { TicketWithRelations, TicketStatus, UserRole } from '@/types'
-import { TICKET_STATUS_LABELS } from '@/types'
 import { TicketDetailModal } from './ticket-detail-modal'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const KANBAN_COLUMNS: Array<{ id: TicketStatus; title: string; color: string }> = [
   { id: 'nova', title: 'Nova', color: 'bg-blue-50' },
@@ -109,41 +117,45 @@ export function TicketKanban() {
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
       {KANBAN_COLUMNS.map((column) => (
         <div key={column.id} className="space-y-4">
-          <div className={`rounded-lg ${column.color} p-4`}>
+          <Card className={`${column.color} p-4`}>
             <h3 className="font-semibold">
               {column.title}
-              <span className="ml-2 text-sm text-gray-500">
-                ({ticketsByStatus[column.id]?.length || 0})
-              </span>
+              <Badge variant="secondary" className="ml-2">
+                {ticketsByStatus[column.id]?.length || 0}
+              </Badge>
             </h3>
-          </div>
+          </Card>
 
           <div className="space-y-3">
             {ticketsByStatus[column.id]?.map((ticket) => (
-              <div
+              <Card
                 key={ticket.id}
-                className="rounded-lg border bg-white p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                className="p-4 hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => {
                   setSelectedTicketId(ticket.id)
                   setIsModalOpen(true)
                 }}
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-sm">{ticket.titulo}</h4>
-                    <p className="mt-1 text-xs text-gray-500 line-clamp-2">
+                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
                       {ticket.descricao}
                     </p>
-                    <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
-                      <span>#{ticket.ticket_number}</span>
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground">#{ticket.ticket_number}</span>
                       {ticket.categories && (
-                        <span className="flex items-center gap-1">
-                          <span
-                            className="h-2 w-2 rounded-full"
-                            style={{ backgroundColor: ticket.categories.cor }}
-                          />
+                        <Badge
+                          variant="outline"
+                          className="text-xs"
+                          style={{
+                            borderColor: ticket.categories.cor,
+                            color: ticket.categories.cor,
+                            backgroundColor: `${ticket.categories.cor}15`
+                          }}
+                        >
                           {ticket.categories.nome}
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   </div>
@@ -151,23 +163,28 @@ export function TicketKanban() {
 
                 {/* Status change dropdown (staff only) */}
                 {canChangeStatus && (
-                  <select
+                  <Select
                     value={ticket.status}
-                    onChange={(e) => {
-                      e.stopPropagation() // Prevent modal from opening
-                      handleStatusChange(ticket.id, e.target.value as TicketStatus)
+                    onValueChange={(value) => {
+                      handleStatusChange(ticket.id, value as TicketStatus)
                     }}
-                    onClick={(e) => e.stopPropagation()} // Prevent modal from opening
-                    className="mt-3 w-full text-xs rounded border p-1"
                   >
-                    {KANBAN_COLUMNS.map((col) => (
-                      <option key={col.id} value={col.id}>
-                        {col.title}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger
+                      className="mt-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent onClick={(e) => e.stopPropagation()}>
+                      {KANBAN_COLUMNS.map((col) => (
+                        <SelectItem key={col.id} value={col.id}>
+                          {col.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
-              </div>
+              </Card>
             )) || []}
 
             {(ticketsByStatus[column.id]?.length || 0) === 0 && (

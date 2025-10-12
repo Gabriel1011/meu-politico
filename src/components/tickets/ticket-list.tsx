@@ -5,8 +5,11 @@ import { createClient } from '@/lib/supabase/client'
 import { formatDateTime } from '@/lib/utils'
 import Link from 'next/link'
 import type { TicketWithRelations, TicketStatus, UserRole } from '@/types'
-import { TICKET_STATUS_LABELS, TICKET_STATUS_COLORS } from '@/types'
+import { TICKET_STATUS_LABELS } from '@/types'
 import { TicketDetailModal } from './ticket-detail-modal'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 export function TicketList() {
   const [tickets, setTickets] = useState<TicketWithRelations[]>([])
@@ -78,46 +81,51 @@ export function TicketList() {
     return <div className="text-center py-12">Carregando...</div>
   }
 
+  const statusVariants: Record<TicketStatus, 'info' | 'warning' | 'default' | 'success' | 'secondary' | 'destructive'> = {
+    nova: 'info',
+    em_analise: 'warning',
+    em_andamento: 'default',
+    resolvida: 'success',
+    encerrada: 'secondary',
+    cancelada: 'destructive',
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        <button
+      <div className="flex flex-wrap gap-2">
+        <Button
           onClick={() => setFilter('all')}
-          className={`px-4 py-2 rounded ${
-            filter === 'all' ? 'bg-primary text-white' : 'bg-gray-100'
-          }`}
+          variant={filter === 'all' ? 'default' : 'outline'}
+          size="sm"
         >
           Todas
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => setFilter('nova')}
-          className={`px-4 py-2 rounded ${
-            filter === 'nova' ? 'bg-primary text-white' : 'bg-gray-100'
-          }`}
+          variant={filter === 'nova' ? 'default' : 'outline'}
+          size="sm"
         >
           Novas
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => setFilter('em_andamento')}
-          className={`px-4 py-2 rounded ${
-            filter === 'em_andamento' ? 'bg-primary text-white' : 'bg-gray-100'
-          }`}
+          variant={filter === 'em_andamento' ? 'default' : 'outline'}
+          size="sm"
         >
           Em Andamento
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => setFilter('resolvida')}
-          className={`px-4 py-2 rounded ${
-            filter === 'resolvida' ? 'bg-primary text-white' : 'bg-gray-100'
-          }`}
+          variant={filter === 'resolvida' ? 'default' : 'outline'}
+          size="sm"
         >
           Resolvidas
-        </button>
+        </Button>
       </div>
 
       {tickets.length === 0 ? (
-        <div className="rounded-lg border bg-white p-12 text-center">
-          <p className="text-gray-500">Nenhuma ocorrência encontrada</p>
+        <Card className="p-12 text-center">
+          <p className="text-muted-foreground">Nenhuma ocorrência encontrada</p>
           {userRole === 'cidadao' && (
             <Link
               href="/painel/ocorrencias/nova"
@@ -126,54 +134,58 @@ export function TicketList() {
               Criar nova ocorrência
             </Link>
           )}
-        </div>
+        </Card>
       ) : (
         <div className="grid gap-4">
           {tickets.map((ticket) => (
-            <div
+            <Card
               key={ticket.id}
-              className="rounded-lg border bg-white p-6 hover:shadow-md transition-shadow cursor-pointer"
+              className="p-6 hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => {
                 setSelectedTicketId(ticket.id)
                 setIsModalOpen(true)
               }}
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-lg font-semibold">{ticket.titulo}</h3>
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-muted-foreground">
                       #{ticket.ticket_number}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-gray-600 line-clamp-2">
+                  <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
                     {ticket.descricao}
                   </p>
-                  <div className="mt-4 flex items-center gap-4 text-xs text-gray-500">
+                  <div className="mt-4 flex items-center gap-2 flex-wrap">
                     {ticket.categories && (
-                      <span className="flex items-center gap-1">
-                        <span
-                          className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: ticket.categories.cor }}
-                        />
+                      <Badge
+                        variant="outline"
+                        className="text-xs"
+                        style={{
+                          borderColor: ticket.categories.cor,
+                          color: ticket.categories.cor,
+                          backgroundColor: `${ticket.categories.cor}15`
+                        }}
+                      >
                         {ticket.categories.nome}
-                      </span>
+                      </Badge>
                     )}
-                    <span>{formatDateTime(ticket.created_at)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      📅 {formatDateTime(ticket.created_at)}
+                    </span>
                     {ticket.localizacao && typeof ticket.localizacao === 'object' && 'bairro' in ticket.localizacao && (
-                      <span>📍 {(ticket.localizacao as { bairro: string }).bairro}</span>
+                      <span className="text-xs text-muted-foreground">
+                        📍 {(ticket.localizacao as { bairro: string }).bairro}
+                      </span>
                     )}
                   </div>
                 </div>
-                <span
-                  className={`ml-4 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                    TICKET_STATUS_COLORS[ticket.status]
-                  }`}
-                >
+                <Badge variant={statusVariants[ticket.status]} className="shrink-0">
                   {TICKET_STATUS_LABELS[ticket.status]}
-                </span>
+                </Badge>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
