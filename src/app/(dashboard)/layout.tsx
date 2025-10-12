@@ -26,11 +26,15 @@ export default async function DashboardLayout({
     .single()
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <DashboardHeader user={userData} />
-      <div className="flex">
+      <div className="flex flex-1 overflow-hidden">
         <DashboardSidebar userRole={userData?.role || 'cidadao'} />
-        <main className="flex-1 p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto lg:ml-0 custom-scrollbar">
+          <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl pb-safe">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   )

@@ -53,7 +53,106 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* PWA and Mobile Optimizations */
+  html {
+    /* Prevent adjustments of font size after orientation changes in iOS */
+    -webkit-text-size-adjust: 100%;
+    /* Enable smooth scrolling */
+    scroll-behavior: smooth;
+  }
+
+  body {
+    /* Disable pull-to-refresh on mobile */
+    overscroll-behavior-y: contain;
+    /* Prevent text selection on long press (mobile) */
+    -webkit-tap-highlight-color: transparent;
+    /* Improve font rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Touch-friendly buttons and links */
+  button,
+  a {
+    /* Minimum touch target size */
+    min-height: 44px;
+    min-width: 44px;
+    /* Better tap response */
+    touch-action: manipulation;
+  }
+
+  /* Prevent zoom on input focus (iOS) */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* Smooth transitions for better UX */
+  * {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+}
+
+@layer utilities {
+  /* Safe area insets for notched devices */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Prevent scrollbar from causing layout shift */
+  .scrollbar-stable {
+    scrollbar-gutter: stable;
+  }
+
+  /* Custom scrollbar for better UX */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  /* Touch feedback scale */
+  .active\:scale-98:active {
+    transform: scale(0.98);
+  }
+
+  /* Line clamp utilities */
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 }
