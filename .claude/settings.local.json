@@ -59,7 +59,8 @@
       "Bash(del \"c:\\dev\\meu-politico\\components\\debug-tenant.tsx\")",
       "Bash(git init:*)",
       "Bash(PORT=3002 npm run dev:*)",
-      "Bash(git filter-branch -f --msg-filter '\nsed \"\"/🤖 Generated with \\[Claude Code\\]/d\"\" | sed \"\"/Co-Authored-By: Claude/d\"\" | sed \"\"/^$/N;/^\\n$/D\"\"\n' HEAD~7..HEAD)"
+      "Bash(git filter-branch -f --msg-filter '\nsed \"\"/🤖 Generated with \\[Claude Code\\]/d\"\" | sed \"\"/Co-Authored-By: Claude/d\"\" | sed \"\"/^$/N;/^\\n$/D\"\"\n' HEAD~7..HEAD)",
+      "Bash(git filter-branch:*)"
     ],
     "deny": [],
     "ask": []
