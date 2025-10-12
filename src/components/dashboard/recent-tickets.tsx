@@ -35,7 +35,7 @@ export async function RecentTickets({
 
   // Se for cidadão, buscar apenas seus tickets
   // Se for staff, buscar todos do tenant
-  const query = supabase
+  let query = supabase
     .from('tickets')
     .select(`
       id,
@@ -51,10 +51,14 @@ export async function RecentTickets({
     .limit(10)
 
   if (role === 'cidadao') {
-    query.eq('user_id', userId)
+    query = query.eq('user_id', userId)
   }
 
-  const { data: tickets } = await query
+  const { data: tickets, error } = await query
+
+  if (error) {
+    console.error('Error loading tickets:', error)
+  }
 
   if (!tickets || tickets.length === 0) {
     return (
