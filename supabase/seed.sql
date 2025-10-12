@@ -243,12 +243,12 @@ END $$;
 INSERT INTO public.notifications (
   id,
   tenant_id,
-  destinatario_id,
-  titulo,
-  mensagem,
-  tipo,
+  recipient_id,
+  title,
+  message,
+  type,
   created_at,
-  lido_em
+  read_at
 ) VALUES
   (
     '5a0d6d85-6c29-4f90-b4c7-7f7d8a4f5d10',
