@@ -57,7 +57,8 @@
       "Bash(netstat:*)",
       "Bash(tasklist)",
       "Bash(del \"c:\\dev\\meu-politico\\components\\debug-tenant.tsx\")",
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "Bash(PORT=3002 npm run dev:*)"
     ],
     "deny": [],
     "ask": []
