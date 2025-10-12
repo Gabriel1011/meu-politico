@@ -1,0 +1,52 @@
+{
+  "name": "meu-politico",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plataforma SaaS multi-tenant que conecta vereadores e cidadãos",
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:status": "supabase db diff --linked",
+    "db:push": "supabase db push --linked",
+    "db:pull": "supabase db pull --linked",
+    "db:reset": "supabase db reset --linked",
+    "db:reset:local": "supabase db reset",
+    "migration:list": "supabase migration list --linked",
+    "migration:new": "supabase migration new",
+    "migration:repair": "supabase migration repair --linked",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.5.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "clsx": "^2.1.0",
+    "date-fns": "^3.0.0",
+    "lucide-react": "^0.400.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^2.5.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "autoprefixer": "^10.4.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^15.0.0",
+    "postcss": "^8.4.0",
+    "supabase": "^2.48.3",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.5.0"
+  }
+}
