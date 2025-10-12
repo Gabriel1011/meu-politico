@@ -65,7 +65,8 @@
       "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch:*)",
       "Bash(npx shadcn-ui@latest add:*)",
       "Bash(git restore:*)",
-      "Bash(npm run type-check:*)"
+      "Bash(npm run type-check:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []

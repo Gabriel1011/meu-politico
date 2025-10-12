@@ -129,6 +129,7 @@ useEffect(() => {
             title,
             message,
             type,
+            metadata,
             created_at,
             read_at,
             recipient_id,
