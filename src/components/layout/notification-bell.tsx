@@ -43,7 +43,7 @@ export function NotificationBell() {
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .is('lido_em', null)
+        .is('read_at', null)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -106,7 +106,7 @@ export function NotificationBell() {
 
       const { error } = await supabase
         .from('notifications')
-        .update({ lido_em: new Date().toISOString() })
+        .update({ read_at: new Date().toISOString() })
         .eq('id', id)
 
       if (error) {
@@ -131,7 +131,7 @@ export function NotificationBell() {
     setMarkingAll(true)
     const { data, error } = await supabase
       .from('notifications')
-      .update({ lido_em: new Date().toISOString() })
+      .update({ read_at: new Date().toISOString() })
       .in('id', unreadIds)
       .select()
 
@@ -218,11 +218,11 @@ export function NotificationBell() {
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="text-sm font-semibold text-gray-900">
-                          {notification.titulo}
+                          {notification.title}
                         </p>
-                        {notification.mensagem && (
+                        {notification.message && (
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {notification.mensagem}
+                            {notification.message}
                           </p>
                         )}
                         <p className="mt-2 text-[11px] uppercase tracking-wide text-muted-foreground">

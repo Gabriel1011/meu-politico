@@ -212,34 +212,34 @@ export interface Database {
         Row: {
           id: string
           tenant_id: string
-          destinatario_id: string
-          titulo: string
-          mensagem: string | null
-          tipo: string
-          metadados: Json
-          lido_em: string | null
+          recipient_id: string
+          title: string
+          message: string | null
+          type: string
+          metadata: Json
+          read_at: string | null
           created_at: string
         }
         Insert: {
           id?: string
           tenant_id: string
-          destinatario_id: string
-          titulo: string
-          mensagem?: string | null
-          tipo?: string
-          metadados?: Json
-          lido_em?: string | null
+          recipient_id: string
+          title: string
+          message?: string | null
+          type?: string
+          metadata?: Json
+          read_at?: string | null
           created_at?: string
         }
         Update: {
           id?: string
           tenant_id?: string
-          destinatario_id?: string
-          titulo?: string
-          mensagem?: string | null
-          tipo?: string
-          metadados?: Json
-          lido_em?: string | null
+          recipient_id?: string
+          title?: string
+          message?: string | null
+          type?: string
+          metadata?: Json
+          read_at?: string | null
           created_at?: string
         }
       }

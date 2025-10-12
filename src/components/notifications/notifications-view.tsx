@@ -126,12 +126,12 @@ useEffect(() => {
         .select(
           `
             id,
-            titulo,
-            mensagem,
-            tipo,
+            title,
+            message,
+            type,
             created_at,
-            lido_em,
-            destinatario_id,
+            read_at,
+            recipient_id,
             tenant_id,
             destinatario:profile (
               id,
@@ -144,7 +144,7 @@ useEffect(() => {
 
       if (isCitizen) {
         if (selectedFilter === 'mine') {
-          query = query.eq('destinatario_id', userId)
+          query = query.eq('recipient_id', userId)
         } else if (selectedFilter === 'citizens') {
           query = query.eq('tenant_id', tenantId!).eq('destinatario.role', 'cidadao')
         }
@@ -153,9 +153,9 @@ useEffect(() => {
       }
 
       if (readFilter === 'unread') {
-        query = query.is('lido_em', null)
+        query = query.is('read_at', null)
       } else if (readFilter === 'read') {
-        query = query.not('lido_em', 'is', null)
+        query = query.not('read_at', 'is', null)
       }
 
       const { data, error } = await query
@@ -230,7 +230,7 @@ useEffect(() => {
   }, [successMessage])
 
   const toggleReadState = async (notification: Notification) => {
-    if (notification.destinatario_id !== userId) {
+    if (notification.recipient_id !== userId) {
       return
     }
 
@@ -240,11 +240,11 @@ useEffect(() => {
       return next
     })
 
-    const nextReadValue = notification.lido_em ? null : new Date().toISOString()
+    const nextReadValue = notification.read_at ? null : new Date().toISOString()
 
     const { data, error } = await supabase
       .from('notifications')
-      .update({ lido_em: nextReadValue })
+      .update({ read_at: nextReadValue })
       .eq('id', notification.id)
       .select()
       .single()
@@ -265,7 +265,7 @@ useEffect(() => {
   }
 
   const unreadCount = useMemo(
-    () => notifications.filter((notification) => !notification.lido_em).length,
+    () => notifications.filter((notification) => !notification.read_at).length,
     [notifications]
   )
 
@@ -309,10 +309,10 @@ useEffect(() => {
 
     const payload = destinatarios.map((recipient) => ({
       tenant_id: recipient.tenant_id,
-      destinatario_id: recipient.id,
-      titulo: titulo.trim(),
-      mensagem: mensagem.trim(),
-      tipo: 'manual',
+      recipient_id: recipient.id,
+      title: titulo.trim(),
+      message: mensagem.trim(),
+      type: 'manual',
     }))
 
     const { error } = await supabase.from('notifications').insert(payload)
@@ -462,8 +462,8 @@ useEffect(() => {
           )}
           <ul className="space-y-3">
             {notifications.map((notification) => {
-              const isOwn = notification.destinatario_id === userId
-              const isUnread = !notification.lido_em
+              const isOwn = notification.recipient_id === userId
+              const isUnread = !notification.read_at
               const isUpdating = updatingIds.has(notification.id)
 
               return (
@@ -478,7 +478,7 @@ useEffect(() => {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold uppercase tracking-wide text-primary">
-                          {notification.tipo}
+                          {notification.type}
                         </span>
                         <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
                           {formatDateTime(notification.created_at)}
@@ -490,10 +490,10 @@ useEffect(() => {
                         )}
                       </div>
                       <h3 className="text-base font-semibold text-gray-900">
-                        {notification.titulo}
+                        {notification.title}
                       </h3>
-                      {notification.mensagem && (
-                        <p className="text-sm text-muted-foreground">{notification.mensagem}</p>
+                      {notification.message && (
+                        <p className="text-sm text-muted-foreground">{notification.message}</p>
                       )}
                       {notification.destinatario && (
                         <p className="text-xs text-muted-foreground">

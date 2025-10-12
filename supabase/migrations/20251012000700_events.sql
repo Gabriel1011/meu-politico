@@ -3,7 +3,10 @@
 -- ============================================
 -- Table to store public agenda events from the office
 
-CREATE TABLE IF NOT EXISTS public.events (
+-- Drop existing table if it exists (for migration from Portuguese to English column names)
+DROP TABLE IF EXISTS public.events CASCADE;
+
+CREATE TABLE public.events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
 
@@ -59,7 +62,7 @@ CREATE POLICY "Anyone can view published events"
   FOR SELECT
   USING (published = true);
 
--- Staff (assessor, politico, admin) can view all events from their tenant
+-- Staff (assessor, politico, superadmin) can view all events from their tenant
 CREATE POLICY "Staff can view all events from their tenant"
   ON public.events
   FOR SELECT
@@ -67,7 +70,7 @@ CREATE POLICY "Staff can view all events from their tenant"
     tenant_id IN (
       SELECT tenant_id FROM public.profile
       WHERE id = auth.uid()
-        AND role IN ('assessor', 'politico', 'admin')
+        AND role IN ('assessor', 'politico', 'superadmin')
     )
   );
 
@@ -79,7 +82,7 @@ CREATE POLICY "Staff can create events for their tenant"
     tenant_id IN (
       SELECT tenant_id FROM public.profile
       WHERE id = auth.uid()
-        AND role IN ('assessor', 'politico', 'admin')
+        AND role IN ('assessor', 'politico', 'superadmin')
     )
   );
 
@@ -91,14 +94,14 @@ CREATE POLICY "Staff can update events from their tenant"
     tenant_id IN (
       SELECT tenant_id FROM public.profile
       WHERE id = auth.uid()
-        AND role IN ('assessor', 'politico', 'admin')
+        AND role IN ('assessor', 'politico', 'superadmin')
     )
   )
   WITH CHECK (
     tenant_id IN (
       SELECT tenant_id FROM public.profile
       WHERE id = auth.uid()
-        AND role IN ('assessor', 'politico', 'admin')
+        AND role IN ('assessor', 'politico', 'superadmin')
     )
   );
 
@@ -110,7 +113,7 @@ CREATE POLICY "Staff can delete events from their tenant"
     tenant_id IN (
       SELECT tenant_id FROM public.profile
       WHERE id = auth.uid()
-        AND role IN ('assessor', 'politico', 'admin')
+        AND role IN ('assessor', 'politico', 'superadmin')
     )
   );
 
