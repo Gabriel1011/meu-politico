@@ -28,16 +28,23 @@ CREATE INDEX idx_tenants_ativo ON tenants(ativo);
 -- ============================================
 -- PROFILE (Perfis de usuários)
 -- ============================================
+-- Nota: superadmin não tem tenant_id (acesso cross-tenant)
 CREATE TABLE IF NOT EXISTS profile (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   nome_completo TEXT,
   avatar_url TEXT,
-  role TEXT NOT NULL CHECK (role IN ('cidadao', 'assessor', 'politico', 'admin')),
+  role TEXT NOT NULL CHECK (role IN ('cidadao', 'assessor', 'politico', 'superadmin')),
   metadata JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- Constraint: superadmin não deve ter tenant_id
+  CONSTRAINT check_superadmin_no_tenant CHECK (
+    (role = 'superadmin' AND tenant_id IS NULL) OR
+    (role != 'superadmin' AND tenant_id IS NOT NULL)
+  )
 );
 
 -- Indexes
@@ -69,7 +76,7 @@ CREATE UNIQUE INDEX idx_categories_tenant_nome ON categories(tenant_id, nome);
 CREATE TABLE IF NOT EXISTS tickets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES profile(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES profile(id) ON DELETE RESTRICT,
   ticket_number TEXT UNIQUE NOT NULL,
 
   titulo TEXT NOT NULL,
@@ -108,7 +115,7 @@ CREATE INDEX idx_tickets_created_at ON tickets(created_at DESC);
 CREATE TABLE IF NOT EXISTS ticket_comments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   ticket_id UUID NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
-  autor_id UUID NOT NULL REFERENCES profile(id) ON DELETE CASCADE,
+  autor_id UUID NOT NULL REFERENCES profile(id) ON DELETE RESTRICT,
 
   mensagem TEXT NOT NULL,
   publico BOOLEAN DEFAULT true,
@@ -130,7 +137,7 @@ CREATE INDEX idx_ticket_comments_created_at ON ticket_comments(created_at);
 CREATE TABLE IF NOT EXISTS events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  criador_id UUID NOT NULL REFERENCES profile(id),
+  criador_id UUID REFERENCES profile(id) ON DELETE SET NULL,
 
   titulo TEXT NOT NULL,
   descricao TEXT,
