@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { logError } from '@/lib/error-handler'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,21 +21,24 @@ export function LoginForm() {
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
+    try {
+      const supabase = createClient()
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (error) {
-      setError(error.message)
+      if (signInError) throw signInError
+
+      router.push('/painel')
+      router.refresh()
+    } catch (err) {
+      const appError = logError(err, 'LoginForm.handleSubmit')
+      setError(appError.userMessage)
+    } finally {
       setLoading(false)
-      return
     }
-
-    router.push('/painel')
-    router.refresh()
   }
 
   return (

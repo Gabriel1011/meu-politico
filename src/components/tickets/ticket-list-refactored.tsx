@@ -15,7 +15,6 @@
  */
 
 import { useEffect, useState } from 'react'
-import { Clock, MapPin } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import Link from 'next/link'
 import type { TicketWithRelations, TicketStatus } from '@/types'
@@ -54,7 +53,7 @@ function TicketListSkeleton() {
 /**
  * Componente de lista de tickets refatorado
  */
-export function TicketList() {
+export function TicketListRefactored() {
   // ✅ Hook customizado - substitui 30+ linhas de código repetido
   const { user, tenantId, role, loading: authLoading } = useUserContext()
 
@@ -216,17 +215,16 @@ export function TicketList() {
                       {ticket.categories.nome}
                     </Badge>
                   )}
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    {formatDateTime(ticket.created_at)}
-                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    📅 {formatDateTime(ticket.created_at)}
+                  </span>
                   {ticket.localizacao &&
                     typeof ticket.localizacao === 'object' &&
                     'bairro' in ticket.localizacao && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <MapPin className="h-3 w-3" />
+                      <span className="text-xs text-muted-foreground">
+                        📍{' '}
                         {(ticket.localizacao as { bairro: string }).bairro}
-                      </div>
+                      </span>
                     )}
                 </div>
               </div>

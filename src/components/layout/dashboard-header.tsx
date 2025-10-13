@@ -14,6 +14,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { LogOut, Settings } from 'lucide-react'
+import { useSidebar } from '@/hooks/use-sidebar'
+import { cn } from '@/lib/utils'
 
 interface DashboardHeaderProps {
   user: {
@@ -25,6 +27,7 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ user }: DashboardHeaderProps) {
   const router = useRouter()
+  const sidebarCollapsed = useSidebar()
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -44,8 +47,20 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-      <div className="flex h-14 sm:h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header
+      className={cn(
+        'sticky top-0 z-30 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60',
+        'transition-all duration-300'
+      )}
+    >
+      <div
+        className={cn(
+          'flex h-14 sm:h-16 items-center justify-between px-4 sm:px-6 lg:px-8',
+          'transition-all duration-300',
+          'lg:ml-64', // Default: expanded sidebar
+          sidebarCollapsed && 'lg:ml-16' // Collapsed sidebar
+        )}
+      >
         <div className="flex items-center gap-3 sm:gap-4">
           <h2 className="text-lg sm:text-xl font-bold truncate max-w-[150px] sm:max-w-none lg:ml-0 ml-12">
             Meu Político

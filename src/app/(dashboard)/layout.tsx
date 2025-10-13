@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { DashboardHeader } from '@/components/layout/dashboard-header'
-import { DashboardSidebar } from '@/components/layout/dashboard-sidebar'
+import { DashboardLayoutClient } from '@/components/layout/dashboard-layout-client'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 
 export default async function DashboardLayout({
@@ -33,14 +33,9 @@ export default async function DashboardLayout({
     <ThemeProvider cores={tenantColors}>
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <DashboardHeader user={userData} />
-        <div className="flex flex-1 overflow-hidden">
-          <DashboardSidebar userRole={userData?.role || 'cidadao'} />
-          <main className="flex-1 overflow-y-auto lg:ml-0 custom-scrollbar">
-            <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl pb-safe">
-              {children}
-            </div>
-          </main>
-        </div>
+        <DashboardLayoutClient userRole={userData?.role || 'cidadao'}>
+          {children}
+        </DashboardLayoutClient>
       </div>
     </ThemeProvider>
   )

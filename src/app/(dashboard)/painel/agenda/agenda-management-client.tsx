@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Plus, Pencil, Trash2, List, Calendar as CalendarIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { useSidebar } from '@/hooks/use-sidebar'
+import { cn } from '@/lib/utils'
 
 type ViewMode = 'list' | 'calendar'
 
@@ -31,6 +33,7 @@ export function AgendaManagementClient({
 }: AgendaManagementClientProps) {
   const router = useRouter()
   const supabase = createClient()
+  const sidebarCollapsed = useSidebar()
 
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [events, setEvents] = useState(initialEvents)
@@ -118,7 +121,14 @@ export function AgendaManagementClient({
     <>
       {viewMode === 'calendar' ? (
         /* Calendar Mode - Full viewport layout */
-        <div className="fixed inset-0 z-10 bg-background lg:left-64" style={{ top: '64px' }}>
+        <div
+          className={cn(
+            'fixed inset-0 z-10 bg-background transition-all duration-300',
+            'lg:left-64', // Default: expanded sidebar
+            sidebarCollapsed && 'lg:left-16' // Collapsed sidebar
+          )}
+          style={{ top: '64px' }}
+        >
           <div className="flex flex-col h-full">
             {/* Action Buttons - single line at top */}
             <div className="px-6 py-4 border-b flex items-center justify-between bg-background">

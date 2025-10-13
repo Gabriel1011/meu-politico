@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { logError } from '@/lib/error-handler'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,38 +23,40 @@ export function SignupForm() {
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
+    try {
+      const supabase = createClient()
 
-    // Pegar tenant_id do cookie (injetado pelo middleware)
-    const tenantId = document.cookie
-      .split('; ')
-      .find((row) => row.startsWith('x-tenant-id='))
-      ?.split('=')[1]
+      // Pegar tenant_id do cookie (injetado pelo middleware)
+      const tenantId = document.cookie
+        .split('; ')
+        .find((row) => row.startsWith('x-tenant-id='))
+        ?.split('=')[1]
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          nome_completo: nome,
-          tenant_id: tenantId, // Passa o tenant_id no metadata
+      const { error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            nome_completo: nome,
+            tenant_id: tenantId, // Passa o tenant_id no metadata
+          },
         },
-      },
-    })
+      })
 
-    if (error) {
-      setError(error.message)
+      if (signUpError) throw signUpError
+
+      setSuccess(true)
+
+      // Redirect to login after success
+      setTimeout(() => {
+        router.push('/login')
+      }, 3000)
+    } catch (err) {
+      const appError = logError(err, 'SignupForm.handleSubmit')
+      setError(appError.userMessage)
+    } finally {
       setLoading(false)
-      return
     }
-
-    setSuccess(true)
-    setLoading(false)
-
-    // Redirect to login after success
-    setTimeout(() => {
-      router.push('/login')
-    }, 3000)
   }
 
   if (success) {

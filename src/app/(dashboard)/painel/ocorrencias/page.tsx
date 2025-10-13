@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { List, LayoutGrid } from 'lucide-react'
 import { TicketList } from '@/components/tickets/ticket-list'
 import { TicketKanban } from '@/components/tickets/ticket-kanban'
 import { Button } from '@/components/ui/button'
@@ -16,14 +17,18 @@ export default function OcorrenciasPage() {
           <Button
             variant={view === 'list' ? 'default' : 'outline'}
             onClick={() => setView('list')}
+            className="gap-2"
           >
-            📋 Lista
+            <List className="h-4 w-4" />
+            Lista
           </Button>
           <Button
             variant={view === 'kanban' ? 'default' : 'outline'}
             onClick={() => setView('kanban')}
+            className="gap-2"
           >
-            📊 Kanban
+            <LayoutGrid className="h-4 w-4" />
+            Kanban
           </Button>
         </div>
       </div>

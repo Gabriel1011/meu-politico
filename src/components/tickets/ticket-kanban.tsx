@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import type { TicketWithRelations, TicketStatus, UserRole } from '@/types'
+import type { TicketWithRelations, TicketStatus } from '@/types'
 import { TicketDetailModal } from './ticket-detail-modal'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useUserContext } from '@/hooks/use-user-context'
+import { ticketsService } from '@/services/tickets.service'
+import { logError } from '@/lib/error-handler'
 
 const KANBAN_COLUMNS: Array<{ id: TicketStatus; title: string; color: string }> = [
   { id: 'nova', title: 'Nova', color: 'bg-blue-50' },
@@ -23,95 +25,107 @@ const KANBAN_COLUMNS: Array<{ id: TicketStatus; title: string; color: string }> 
 
 type TicketsByStatus = Record<TicketStatus, TicketWithRelations[]>
 
+function KanbanSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {KANBAN_COLUMNS.map((column) => (
+        <div key={column.id} className="space-y-4">
+          <Card className={`${column.color} p-4 animate-pulse`}>
+            <div className="h-6 bg-muted rounded w-24" />
+          </Card>
+          <div className="space-y-3">
+            {[...Array(2)].map((_, i) => (
+              <Card key={i} className="p-4 animate-pulse">
+                <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+                <div className="h-3 bg-muted rounded w-full" />
+              </Card>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function TicketKanban() {
+  const { user, tenantId, role, loading: authLoading } = useUserContext()
+
   const [ticketsByStatus, setTicketsByStatus] = useState<Partial<TicketsByStatus>>({
     nova: [],
     em_analise: [],
     em_andamento: [],
     resolvida: [],
   })
-  const [loading, setLoading] = useState(true)
-  const [userRole, setUserRole] = useState<UserRole>('cidadao')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
-    loadTickets()
-  }, [])
+    if (tenantId && user) loadTickets()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantId, user?.id])
 
   const loadTickets = async () => {
+    if (!tenantId || !user) return
+
     setLoading(true)
-    const supabase = createClient()
+    setError(null)
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const data = await ticketsService.getTickets({
+        tenantId,
+        filters: {
+          status: ['nova', 'em_analise', 'em_andamento', 'resolvida'],
+          userId: role === 'cidadao' ? user.id : undefined,
+        },
+      })
 
-    if (!user) return
-
-    const { data: userData } = await supabase
-      .from('profile')
-      .select('tenant_id, role')
-      .eq('id', user.id)
-      .single()
-
-    if (!userData) return
-
-    setUserRole(userData.role as UserRole)
-
-    let query = supabase
-      .from('tickets')
-      .select(`
-        *,
-        profile (nome_completo, email),
-        categories (nome, cor)
-      `)
-      .eq('tenant_id', userData.tenant_id)
-      .in('status', ['nova', 'em_analise', 'em_andamento', 'resolvida'])
-      .order('created_at', { ascending: false })
-
-    if (userData.role === 'cidadao') {
-      query = query.eq('user_id', user.id)
-    }
-
-    const { data, error } = await query
-
-    if (error) {
-      console.error('Error loading tickets:', error)
-    }
-
-    if (data) {
-      console.log('Tickets loaded:', data.length)
       const grouped: Partial<TicketsByStatus> = {
         nova: data.filter((t) => t.status === 'nova'),
         em_analise: data.filter((t) => t.status === 'em_analise'),
         em_andamento: data.filter((t) => t.status === 'em_andamento'),
         resolvida: data.filter((t) => t.status === 'resolvida'),
       }
-      setTicketsByStatus(grouped)
-    }
 
-    setLoading(false)
+      setTicketsByStatus(grouped)
+    } catch (err) {
+      const appError = logError(err, 'TicketKanban.loadTickets')
+      setError(appError.userMessage)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleStatusChange = async (ticketId: string, newStatus: TicketStatus) => {
-    const supabase = createClient()
-
-    const { error } = await supabase
-      .from('tickets')
-      .update({ status: newStatus })
-      .eq('id', ticketId)
-
-    if (!error) {
+    try {
+      await ticketsService.updateTicketStatus(ticketId, newStatus)
       loadTickets()
+    } catch (err) {
+      const appError = logError(err, 'TicketKanban.handleStatusChange')
+      setError(appError.userMessage)
     }
   }
 
-  if (loading) {
-    return <div className="text-center py-12">Carregando...</div>
+  if (authLoading || loading) {
+    return <KanbanSkeleton />
   }
 
-  const canChangeStatus = userRole !== 'cidadao'
+  if (error) {
+    return (
+      <Card className="p-12 text-center">
+        <p className="text-destructive mb-4">{error}</p>
+        <button
+          onClick={loadTickets}
+          className="text-primary hover:underline"
+        >
+          Tentar novamente
+        </button>
+      </Card>
+    )
+  }
+
+  const canChangeStatus = role !== 'cidadao'
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -143,7 +157,9 @@ export function TicketKanban() {
                       {ticket.descricao}
                     </p>
                     <div className="mt-2 flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-muted-foreground">#{ticket.ticket_number}</span>
+                      <span className="text-xs text-muted-foreground">
+                        #{ticket.ticket_number}
+                      </span>
                       {ticket.categories && (
                         <Badge
                           variant="outline"
@@ -151,7 +167,7 @@ export function TicketKanban() {
                           style={{
                             borderColor: ticket.categories.cor,
                             color: ticket.categories.cor,
-                            backgroundColor: `${ticket.categories.cor}15`
+                            backgroundColor: `${ticket.categories.cor}15`,
                           }}
                         >
                           {ticket.categories.nome}
@@ -203,10 +219,10 @@ export function TicketKanban() {
           setIsModalOpen(open)
           if (!open) {
             setSelectedTicketId(null)
-            loadTickets() // Reload to get updated status
+            loadTickets()
           }
         }}
-        userRole={userRole}
+        userRole={role}
       />
     </div>
   )

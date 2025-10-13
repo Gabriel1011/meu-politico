@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { Clock } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { TicketDetailModal } from '@/components/tickets/ticket-detail-modal'
 import { Card } from '@/components/ui/card'
@@ -160,9 +161,10 @@ export function RecentTicketsClient({ tickets, role }: RecentTicketsClientProps)
                     </Badge>
                   )}
 
-                  <span className="text-xs text-muted-foreground">
-                    📅 {formatDateTime(ticket.created_at)}
-                  </span>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    {formatDateTime(ticket.created_at)}
+                  </div>
                 </div>
               </div>
             </Card>

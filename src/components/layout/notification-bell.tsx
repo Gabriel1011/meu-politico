@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Bell, CheckCheck, Loader2, MailOpen } from 'lucide-react'
 import { cn, formatDateTime } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { logError } from '@/lib/error-handler'
 import type { Database } from '@/types/database.types'
 import {
   DropdownMenu,
@@ -40,25 +41,27 @@ export function NotificationBell() {
         setIsLoading(true)
       }
 
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .is('read_at', null)
-        .order('created_at', { ascending: false })
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('notifications')
+          .select('*')
+          .is('read_at', null)
+          .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('Erro ao carregar notificações', error)
-        setError('Não foi possível carregar as notificações.')
-        setNotifications([])
-      } else {
+        if (fetchError) throw fetchError
+
         setNotifications(data ?? [])
         setError(null)
-      }
-
-      if (options?.silent) {
-        setIsRefreshing(false)
-      } else {
-        setIsLoading(false)
+      } catch (err) {
+        const appError = logError(err, 'NotificationBell.fetchNotifications')
+        setError(appError.userMessage)
+        setNotifications([])
+      } finally {
+        if (options?.silent) {
+          setIsRefreshing(false)
+        } else {
+          setIsLoading(false)
+        }
       }
     },
     [supabase]
@@ -104,22 +107,24 @@ export function NotificationBell() {
         return next
       })
 
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read_at: new Date().toISOString() })
-        .eq('id', id)
+      try {
+        const { error: updateError } = await supabase
+          .from('notifications')
+          .update({ read_at: new Date().toISOString() })
+          .eq('id', id)
 
-      if (error) {
-        console.error('Erro ao marcar notificação como lida', error)
-      } else {
+        if (updateError) throw updateError
+
         setNotifications((prev) => prev.filter((notification) => notification.id !== id))
+      } catch (err) {
+        logError(err, 'NotificationBell.markAsRead')
+      } finally {
+        setPendingIds((prev) => {
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
       }
-
-      setPendingIds((prev) => {
-        const next = new Set(prev)
-        next.delete(id)
-        return next
-      })
     },
     [supabase]
   )
@@ -129,20 +134,25 @@ export function NotificationBell() {
     if (unreadIds.length === 0) return
 
     setMarkingAll(true)
-    const { data, error } = await supabase
-      .from('notifications')
-      .update({ read_at: new Date().toISOString() })
-      .in('id', unreadIds)
-      .select()
 
-    if (error) {
-      console.error('Erro ao marcar notificações como lidas', error)
-    } else if (data) {
-      const markedIds = new Set(data.map((notification) => notification.id))
-      setNotifications((prev) => prev.filter((notification) => !markedIds.has(notification.id)))
+    try {
+      const { data, error: updateError } = await supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .in('id', unreadIds)
+        .select()
+
+      if (updateError) throw updateError
+
+      if (data) {
+        const markedIds = new Set(data.map((notification) => notification.id))
+        setNotifications((prev) => prev.filter((notification) => !markedIds.has(notification.id)))
+      }
+    } catch (err) {
+      logError(err, 'NotificationBell.markAllAsRead')
+    } finally {
+      setMarkingAll(false)
     }
-
-    setMarkingAll(false)
   }, [notifications, supabase])
 
   const bellButton = (

@@ -2,16 +2,35 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { useUserContext } from '@/hooks/use-user-context'
+import { ticketsService } from '@/services/tickets.service'
+import { logError } from '@/lib/error-handler'
+import { STORAGE_PATHS, UPLOAD } from '@/lib/constants'
+import type { Category } from '@/types'
+import { createClient } from '@/lib/supabase/client'
+
+function FormSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="h-10 bg-muted rounded" />
+      <div className="h-32 bg-muted rounded" />
+      <div className="h-10 bg-muted rounded" />
+      <div className="h-10 bg-muted rounded" />
+    </div>
+  )
+}
 
 export function TicketForm() {
   const router = useRouter()
+  const { user, tenantId, loading: authLoading } = useUserContext()
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [categories, setCategories] = useState<any[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
 
   const [formData, setFormData] = useState({
@@ -22,19 +41,28 @@ export function TicketForm() {
   })
 
   useEffect(() => {
-    loadCategories()
-  }, [])
+    if (tenantId) loadCategories()
+  }, [tenantId])
 
   const loadCategories = async () => {
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('ativa', true)
-      .order('ordem')
+    if (!tenantId) return
 
-    if (data) {
-      setCategories(data)
+    try {
+      const supabase = createClient()
+      const { data, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('ativa', true)
+        .order('ordem')
+
+      if (categoriesError) throw categoriesError
+
+      if (data) {
+        setCategories(data as Category[])
+      }
+    } catch (err) {
+      const appError = logError(err, 'TicketForm.loadCategories')
+      setError(appError.userMessage)
     }
   }
 
@@ -42,38 +70,33 @@ export function TicketForm() {
     const files = e.target.files
     if (!files || files.length === 0) return
 
+    if (!user) {
+      setError('Você precisa estar autenticado para fazer upload')
+      return
+    }
+
+    // Validar quantidade de arquivos
+    if (files.length > UPLOAD.MAX_IMAGES_PER_TICKET) {
+      setError(`Máximo de ${UPLOAD.MAX_IMAGES_PER_TICKET} imagens por vez`)
+      return
+    }
+
+    // Validar tamanho total
+    const totalSize = Array.from(files).reduce((sum, file) => sum + file.size, 0)
+    if (totalSize > UPLOAD.MAX_IMAGE_SIZE_BYTES * files.length) {
+      setError(`Cada imagem deve ter no máximo ${UPLOAD.MAX_IMAGE_SIZE_BYTES / 1024 / 1024}MB`)
+      return
+    }
+
     setLoading(true)
-    const supabase = createClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) return
+    setError(null)
 
     try {
-      const uploadPromises = Array.from(files).map(async (file) => {
-        const fileExt = file.name.split('.').pop()
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`
-        const filePath = `tickets/${fileName}`
-
-        const { error: uploadError } = await supabase.storage
-          .from('uploads')
-          .upload(filePath, file)
-
-        if (uploadError) throw uploadError
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from('uploads').getPublicUrl(filePath)
-
-        return publicUrl
-      })
-
-      const urls = await Promise.all(uploadPromises)
+      const urls = await ticketsService.uploadImages(Array.from(files), user.id)
       setUploadedImages([...uploadedImages, ...urls])
     } catch (err) {
-      setError('Erro ao fazer upload das imagens')
+      const appError = logError(err, 'TicketForm.handleImageUpload')
+      setError(appError.userMessage)
     } finally {
       setLoading(false)
     }
@@ -81,69 +104,51 @@ export function TicketForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!user || !tenantId) {
+      setError('Você precisa estar autenticado')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
+    try {
+      await ticketsService.createTicket(tenantId, user.id, {
+        titulo: formData.titulo,
+        descricao: formData.descricao,
+        categoria_id: formData.categoria_id || undefined,
+        localizacao: formData.bairro ? { bairro: formData.bairro } : undefined,
+        fotos: uploadedImages,
+      })
 
-    // Buscar dados do usuário
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      setError('Usuário não autenticado')
+      router.push('/painel/ocorrencias')
+      router.refresh()
+    } catch (err) {
+      const appError = logError(err, 'TicketForm.handleSubmit')
+      setError(appError.userMessage)
+    } finally {
       setLoading(false)
-      return
     }
+  }
 
-    const { data: userData } = await supabase
-      .from('profile')
-      .select('tenant_id')
-      .eq('id', user.id)
-      .single()
+  if (authLoading) return <FormSkeleton />
 
-    if (!userData?.tenant_id) {
-      setError('Usuário não vinculado a um gabinete')
-      setLoading(false)
-      return
-    }
-
-    // Gerar número de protocolo
-    const { data: ticketNumber } = await supabase.rpc('generate_ticket_number', {
-      p_tenant_id: userData.tenant_id,
-    })
-
-    // Criar ticket
-    const { error: createError } = await supabase.from('tickets').insert({
-      tenant_id: userData.tenant_id,
-      user_id: user.id,
-      ticket_number: ticketNumber,
-      titulo: formData.titulo,
-      descricao: formData.descricao,
-      categoria_id: formData.categoria_id || null,
-      localizacao: formData.bairro
-        ? { bairro: formData.bairro }
-        : null,
-      fotos: uploadedImages,
-    })
-
-    if (createError) {
-      setError(createError.message)
-      setLoading(false)
-      return
-    }
-
-    // Redirecionar para lista de ocorrências
-    router.push('/painel/ocorrencias')
-    router.refresh()
+  if (!user) {
+    return (
+      <div className="rounded-md bg-destructive/10 p-4">
+        <p className="text-sm text-destructive">
+          Você precisa estar autenticado para criar uma ocorrência
+        </p>
+      </div>
+    )
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="rounded-md bg-red-50 p-4">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="rounded-md bg-destructive/10 p-4">
+          <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
 
@@ -156,12 +161,13 @@ export function TicketForm() {
           onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
           placeholder="Ex: Buraco na rua principal"
           className="mt-1"
+          disabled={loading}
         />
       </div>
 
       <div>
         <Label htmlFor="descricao">Descrição *</Label>
-        <textarea
+        <Textarea
           id="descricao"
           required
           value={formData.descricao}
@@ -169,7 +175,9 @@ export function TicketForm() {
             setFormData({ ...formData, descricao: e.target.value })
           }
           placeholder="Descreva o problema em detalhes..."
-          className="mt-1 flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-1"
+          rows={5}
+          disabled={loading}
         />
       </div>
 
@@ -182,6 +190,7 @@ export function TicketForm() {
             setFormData({ ...formData, categoria_id: e.target.value })
           }
           className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={loading}
         >
           <option value="">Selecione uma categoria</option>
           {categories.map((category) => (
@@ -200,6 +209,7 @@ export function TicketForm() {
           onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
           placeholder="Ex: Centro"
           className="mt-1"
+          disabled={loading}
         />
       </div>
 
@@ -212,6 +222,7 @@ export function TicketForm() {
           multiple
           onChange={handleImageUpload}
           className="mt-1"
+          disabled={loading}
         />
         {uploadedImages.length > 0 && (
           <div className="mt-2 grid grid-cols-3 gap-2">
@@ -219,15 +230,16 @@ export function TicketForm() {
               <div key={index} className="relative">
                 <img
                   src={url}
-                  alt={`Upload ${index + 1}`}
+                  alt={`Foto ${index + 1} da ocorrência`}
                   className="h-24 w-full rounded object-cover"
                 />
               </div>
             ))}
           </div>
         )}
-        <p className="mt-1 text-xs text-gray-500">
-          Você pode adicionar fotos para ajudar a descrever o problema
+        <p className="mt-1 text-xs text-muted-foreground">
+          Você pode adicionar até {UPLOAD.MAX_IMAGES_PER_TICKET} fotos para
+          ajudar a descrever o problema
         </p>
       </div>
 
@@ -239,6 +251,7 @@ export function TicketForm() {
           type="button"
           variant="outline"
           onClick={() => router.back()}
+          disabled={loading}
         >
           Cancelar
         </Button>

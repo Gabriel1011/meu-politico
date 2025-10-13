@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ImageUpload } from '@/components/ui/image-upload'
 import { ReactDateTimePicker } from '@/components/ui/react-date-time-picker'
 import { createClient } from '@/lib/supabase/client'
+import { logError } from '@/lib/error-handler'
 
 interface EventFormProps {
   event?: AgendaEvent | null
@@ -63,13 +64,11 @@ export function EventForm({
       // Validate dates
       if (!startDate || !endDate) {
         setError('Por favor, selecione as datas de início e término')
-        setLoading(false)
         return
       }
 
       if (endDate < startDate) {
         setError('A data/hora de término deve ser posterior à data/hora de início')
-        setLoading(false)
         return
       }
 
@@ -103,9 +102,9 @@ export function EventForm({
 
       // Success
       if (onSuccess) onSuccess()
-    } catch (err: any) {
-      console.error('Error saving event:', err)
-      setError(err.message || 'Erro ao salvar evento')
+    } catch (err) {
+      const appError = logError(err, 'EventForm.handleSubmit')
+      setError(appError.userMessage)
     } finally {
       setLoading(false)
     }

@@ -5,6 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { formatDateTime } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { useUserContext } from '@/hooks/use-user-context'
+import { logError } from '@/lib/error-handler'
 import type { TicketCommentWithAuthor, UserRole } from '@/types'
 
 interface TicketCommentsProps {
@@ -13,87 +16,102 @@ interface TicketCommentsProps {
 }
 
 export function TicketComments({ ticketId, userRole }: TicketCommentsProps) {
+  const { user } = useUserContext()
+
   const [comments, setComments] = useState<TicketCommentWithAuthor[]>([])
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [newComment, setNewComment] = useState('')
   const [isPublic, setIsPublic] = useState(true)
 
   useEffect(() => {
-    loadComments()
-  }, [ticketId])
+    if (user && ticketId) {
+      loadComments()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticketId, user])
 
   const loadComments = async () => {
-    setLoading(true)
-    const supabase = createClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
     if (!user) return
 
-    // Build query based on role
-    let query = supabase
-      .from('ticket_comments')
-      .select(`
-        *,
-        profile (id, nome_completo, avatar_url)
-      `)
-      .eq('ticket_id', ticketId)
-      .order('created_at', { ascending: true })
+    setLoading(true)
+    setError(null)
 
-    // Citizens only see public comments + their own
-    if (userRole === 'cidadao') {
-      query = query.or(`publico.eq.true,autor_id.eq.${user.id}`)
+    try {
+      const supabase = createClient()
+
+      // Build query based on role
+      let query = supabase
+        .from('ticket_comments')
+        .select(`
+          *,
+          profile (id, nome_completo, avatar_url)
+        `)
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: true })
+
+      // Citizens only see public comments + their own
+      if (userRole === 'cidadao') {
+        query = query.or(`publico.eq.true,autor_id.eq.${user.id}`)
+      }
+
+      const { data, error: fetchError } = await query
+
+      if (fetchError) throw fetchError
+
+      if (data) {
+        setComments(data as TicketCommentWithAuthor[])
+      }
+    } catch (err) {
+      const appError = logError(err, 'TicketComments.loadComments')
+      setError(appError.userMessage)
+    } finally {
+      setLoading(false)
     }
-
-    const { data } = await query
-
-    if (data) {
-      setComments(data as TicketCommentWithAuthor[])
-    }
-
-    setLoading(false)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!newComment.trim()) return
+    if (!newComment.trim() || !user) return
 
     setSubmitting(true)
-    const supabase = createClient()
+    setError(null)
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const supabase = createClient()
 
-    if (!user) {
-      setSubmitting(false)
-      return
-    }
+      const { error: insertError } = await supabase.from('ticket_comments').insert({
+        ticket_id: ticketId,
+        autor_id: user.id,
+        mensagem: newComment.trim(),
+        publico: isPublic,
+      })
 
-    const { error } = await supabase.from('ticket_comments').insert({
-      ticket_id: ticketId,
-      autor_id: user.id,
-      mensagem: newComment.trim(),
-      publico: isPublic,
-    })
+      if (insertError) throw insertError
 
-    if (!error) {
       setNewComment('')
       setIsPublic(true)
       loadComments()
+    } catch (err) {
+      const appError = logError(err, 'TicketComments.handleSubmit')
+      setError(appError.userMessage)
+    } finally {
+      setSubmitting(false)
     }
-
-    setSubmitting(false)
   }
 
   const canAddPrivateComments = userRole !== 'cidadao'
 
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="rounded-md bg-destructive/10 p-4">
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
+
       {/* Comments List */}
       {loading ? (
         <div className="py-4 text-center text-sm text-gray-500">
@@ -144,12 +162,12 @@ export function TicketComments({ ticketId, userRole }: TicketCommentsProps) {
       <form onSubmit={handleSubmit} className="space-y-3 border-t pt-4">
         <div>
           <Label htmlFor="comment">Adicionar comentário</Label>
-          <textarea
+          <Textarea
             id="comment"
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Escreva seu comentário..."
-            className="mt-1 flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-1 min-h-[100px]"
             disabled={submitting}
           />
         </div>
