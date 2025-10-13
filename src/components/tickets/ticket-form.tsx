@@ -70,7 +70,7 @@ export function TicketForm() {
     const files = e.target.files
     if (!files || files.length === 0) return
 
-    if (!user) {
+    if (!user || !tenantId) {
       setError('Você precisa estar autenticado para fazer upload')
       return
     }
@@ -92,7 +92,7 @@ export function TicketForm() {
     setError(null)
 
     try {
-      const urls = await ticketsService.uploadImages(Array.from(files), user.id)
+      const urls = await ticketsService.uploadImages(Array.from(files), tenantId, user.id)
       setUploadedImages([...uploadedImages, ...urls])
     } catch (err) {
       const appError = logError(err, 'TicketForm.handleImageUpload')

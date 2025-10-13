@@ -313,12 +313,12 @@ class TicketsService {
    * Faz upload de imagem para storage
    *
    * @example
-   * const url = await ticketsService.uploadImage(file, 'user-id')
+   * const url = await ticketsService.uploadImage(file, 'tenant-id', 'user-id')
    */
-  async uploadImage(file: File, userId: string): Promise<string> {
+  async uploadImage(file: File, tenantId: string, userId: string): Promise<string> {
     const fileExt = file.name.split('.').pop()
     const fileName = `${userId}-${Date.now()}.${fileExt}`
-    const filePath = `tickets/${fileName}`
+    const filePath = `${tenantId}/tickets/${fileName}`
 
     const { error: uploadError } = await this.supabase.storage
       .from('uploads')
@@ -337,10 +337,10 @@ class TicketsService {
    * Faz upload de múltiplas imagens
    *
    * @example
-   * const urls = await ticketsService.uploadImages(files, 'user-id')
+   * const urls = await ticketsService.uploadImages(files, 'tenant-id', 'user-id')
    */
-  async uploadImages(files: File[], userId: string): Promise<string[]> {
-    const uploadPromises = files.map((file) => this.uploadImage(file, userId))
+  async uploadImages(files: File[], tenantId: string, userId: string): Promise<string[]> {
+    const uploadPromises = files.map((file) => this.uploadImage(file, tenantId, userId))
     return Promise.all(uploadPromises)
   }
 }
