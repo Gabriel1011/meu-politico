@@ -10,7 +10,6 @@ import {
   LayoutDashboard,
   FileText,
   Bell,
-  Plus,
   Calendar,
   Settings,
   Users,
@@ -81,12 +80,6 @@ export function DashboardSidebar({ userRole }: DashboardSidebarProps) {
       href: '/painel/notificacoes',
       Icon: Bell,
       roles: ['cidadao', 'assessor', 'politico', 'admin', 'superadmin'],
-    },
-    {
-      name: 'Nova Ocorrência',
-      href: '/painel/ocorrencias/nova',
-      Icon: Plus,
-      roles: ['cidadao'],
     },
     {
       name: 'Agenda',

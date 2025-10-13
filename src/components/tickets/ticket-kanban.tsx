@@ -69,6 +69,10 @@ const KANBAN_COLUMNS: Array<{
 
 type TicketsByStatus = Record<TicketStatus, TicketWithRelations[]>
 
+interface TicketKanbanProps {
+  refreshToken?: number
+}
+
 function KanbanSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -252,7 +256,7 @@ function DroppableColumn({ column, tickets, canChangeStatus, canAssign, tenantId
   )
 }
 
-export function TicketKanban() {
+export function TicketKanban({ refreshToken }: TicketKanbanProps) {
   const { user, tenantId, role, loading: authLoading } = useUserContext()
 
   const [ticketsByStatus, setTicketsByStatus] = useState<Partial<TicketsByStatus>>({
@@ -279,7 +283,7 @@ export function TicketKanban() {
   useEffect(() => {
     if (tenantId && user) loadTickets()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId, user?.id])
+  }, [tenantId, user?.id, refreshToken])
 
   const loadTickets = async () => {
     if (!tenantId || !user) return

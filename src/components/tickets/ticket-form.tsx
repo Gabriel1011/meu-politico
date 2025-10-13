@@ -24,7 +24,11 @@ function FormSkeleton() {
   )
 }
 
-export function TicketForm() {
+interface TicketFormProps {
+  onSuccess?: () => void
+}
+
+export function TicketForm({ onSuccess }: TicketFormProps = {}) {
   const router = useRouter()
   const { user, tenantId, loading: authLoading } = useUserContext()
 
@@ -122,8 +126,13 @@ export function TicketForm() {
         fotos: uploadedImages,
       })
 
-      router.push('/painel/ocorrencias')
-      router.refresh()
+      if (onSuccess) {
+        onSuccess()
+        router.refresh()
+      } else {
+        router.push('/painel/ocorrencias')
+        router.refresh()
+      }
     } catch (err) {
       const appError = logError(err, 'TicketForm.handleSubmit')
       setError(appError.userMessage)

@@ -54,7 +54,7 @@ export default function Home() {
                   Plataforma integrada para municípios
                 </span>
                 <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-                  Conecte vereadores e cidadãos com informação confiável.
+                  Conecte políticos e cidadãos com informação confiável.
                 </h1>
                 <p className="mx-auto max-w-xl text-base text-muted-foreground sm:mx-0 sm:text-lg">
                   Simplifique a comunicação com a população, organize pautas e

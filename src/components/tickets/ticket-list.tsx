@@ -30,6 +30,11 @@ import { useUserContext } from '@/hooks/use-user-context'
 import { ticketsService } from '@/services/tickets.service'
 import { logError } from '@/lib/error-handler'
 
+interface TicketListProps {
+  refreshToken?: number
+  onCreateRequest?: () => void
+}
+
 /**
  * Skeleton para loading state
  */
@@ -56,7 +61,7 @@ function TicketListSkeleton() {
 /**
  * Componente de lista de tickets refatorado
  */
-export function TicketList() {
+export function TicketList({ refreshToken, onCreateRequest }: TicketListProps) {
   // ✅ Hook customizado - substitui 30+ linhas de código repetido
   const { user, tenantId, role, loading: authLoading } = useUserContext()
 
@@ -75,7 +80,7 @@ export function TicketList() {
 
     loadTickets()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, tenantId, user?.id])
+  }, [filter, tenantId, user?.id, refreshToken])
 
   // Filtrar tickets por busca (número ou título) - DEVE estar antes dos early returns
   const filteredTickets = useMemo(() => {
@@ -136,14 +141,24 @@ export function TicketList() {
     return (
       <Card className="p-12 text-center">
         <p className="text-muted-foreground">Nenhuma ocorrência encontrada</p>
-        {role === 'cidadao' && (
-          <Link
-            href="/painel/ocorrencias/nova"
-            className="mt-4 inline-block text-primary hover:underline"
-          >
-            Criar nova ocorrência
-          </Link>
-        )}
+        {role === 'cidadao' &&
+          (onCreateRequest ? (
+            <Button
+              type="button"
+              variant="link"
+              className="mt-4"
+              onClick={onCreateRequest}
+            >
+              Criar nova ocorrência
+            </Button>
+          ) : (
+            <Link
+              href="/painel/ocorrencias/nova"
+              className="mt-4 inline-block text-primary hover:underline"
+            >
+              Criar nova ocorrência
+            </Link>
+          ))}
       </Card>
     )
   }
