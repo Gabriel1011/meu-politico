@@ -130,6 +130,7 @@ export interface Database {
           prioridade: 'baixa' | 'media' | 'alta' | 'urgente'
           localizacao: Json | null
           fotos: string[]
+          assigned_to: string | null
           metadata: Json
           created_at: string
           updated_at: string
@@ -148,6 +149,7 @@ export interface Database {
           prioridade?: 'baixa' | 'media' | 'alta' | 'urgente'
           localizacao?: Json | null
           fotos?: string[]
+          assigned_to?: string | null
           metadata?: Json
           created_at?: string
           updated_at?: string
@@ -166,6 +168,7 @@ export interface Database {
           prioridade?: 'baixa' | 'media' | 'alta' | 'urgente'
           localizacao?: Json | null
           fotos?: string[]
+          assigned_to?: string | null
           metadata?: Json
           created_at?: string
           updated_at?: string

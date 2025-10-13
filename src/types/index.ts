@@ -20,8 +20,9 @@ export type AgendaEvent = Event
 
 // Extended types with relations
 export type TicketWithRelations = Ticket & {
-  profile?: Pick<Profile, 'id' | 'nome_completo' | 'email'>
+  profile?: Pick<Profile, 'id' | 'nome_completo' | 'email' | 'avatar_url'>
   categories?: Pick<Category, 'id' | 'nome' | 'cor'>
+  assigned_user?: Pick<Profile, 'id' | 'nome_completo' | 'avatar_url'>
 }
 
 export type TicketCommentWithAuthor = TicketComment & {

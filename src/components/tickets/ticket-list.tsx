@@ -14,16 +14,18 @@
  * DEPOIS: ~120 linhas focadas na UI
  */
 
-import { useEffect, useState } from 'react'
-import { Clock, MapPin } from 'lucide-react'
-import { formatDateTime } from '@/lib/utils'
+import { useEffect, useState, useMemo } from 'react'
+import { Clock, MapPin, Inbox, AlertCircle, PlayCircle, CheckCircle2, Search } from 'lucide-react'
+import { formatDateTime, cn } from '@/lib/utils'
 import Link from 'next/link'
 import type { TicketWithRelations, TicketStatus } from '@/types'
 import { TICKET_STATUS_LABELS } from '@/types'
 import { TicketDetailModal } from './ticket-detail-modal'
+import { TicketAssignAvatar } from './ticket-assign-avatar'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useUserContext } from '@/hooks/use-user-context'
 import { ticketsService } from '@/services/tickets.service'
 import { logError } from '@/lib/error-handler'
@@ -63,6 +65,7 @@ export function TicketList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<TicketStatus | 'all'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -73,6 +76,18 @@ export function TicketList() {
     loadTickets()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, tenantId, user?.id])
+
+  // Filtrar tickets por busca (número ou título) - DEVE estar antes dos early returns
+  const filteredTickets = useMemo(() => {
+    if (!searchQuery.trim()) return tickets
+
+    const query = searchQuery.toLowerCase().trim()
+    return tickets.filter((ticket) => {
+      const matchesNumber = ticket.ticket_number?.toString().toLowerCase().includes(query)
+      const matchesTitle = ticket.titulo?.toLowerCase().includes(query)
+      return matchesNumber || matchesTitle
+    })
+  }, [tickets, searchQuery])
 
   const loadTickets = async () => {
     if (!tenantId || !user) return
@@ -146,43 +161,86 @@ export function TicketList() {
     cancelada: 'destructive',
   }
 
+  const canAssign = ['assessor', 'vereador', 'admin'].includes(role)
+
   return (
-    <div className="space-y-4">
-      {/* Filtros */}
+    <div className="space-y-6">
+      {/* Campo de busca */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Buscar por número ou título..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {/* Filtros - matching notifications screen style (sem ordenação) */}
       <div className="flex flex-wrap gap-2">
         <Button
+          type="button"
           onClick={() => setFilter('all')}
           variant={filter === 'all' ? 'default' : 'outline'}
           size="sm"
+          className={cn('gap-2', filter === 'all' && 'shadow-sm')}
         >
+          <Inbox className="h-4 w-4" />
           Todas
         </Button>
         <Button
+          type="button"
           onClick={() => setFilter('nova')}
           variant={filter === 'nova' ? 'default' : 'outline'}
           size="sm"
+          className={cn('gap-2', filter === 'nova' && 'shadow-sm')}
         >
+          <AlertCircle className="h-4 w-4" />
           Novas
         </Button>
         <Button
+          type="button"
+          onClick={() => setFilter('em_analise')}
+          variant={filter === 'em_analise' ? 'default' : 'outline'}
+          size="sm"
+          className={cn('gap-2', filter === 'em_analise' && 'shadow-sm')}
+        >
+          <Clock className="h-4 w-4" />
+          Em Análise
+        </Button>
+        <Button
+          type="button"
           onClick={() => setFilter('em_andamento')}
           variant={filter === 'em_andamento' ? 'default' : 'outline'}
           size="sm"
+          className={cn('gap-2', filter === 'em_andamento' && 'shadow-sm')}
         >
+          <PlayCircle className="h-4 w-4" />
           Em Andamento
         </Button>
         <Button
+          type="button"
           onClick={() => setFilter('resolvida')}
           variant={filter === 'resolvida' ? 'default' : 'outline'}
           size="sm"
+          className={cn('gap-2', filter === 'resolvida' && 'shadow-sm')}
         >
+          <CheckCircle2 className="h-4 w-4" />
           Resolvidas
         </Button>
       </div>
 
       {/* Lista de tickets */}
       <div className="grid gap-4">
-        {tickets.map((ticket) => (
+        {filteredTickets.length === 0 && searchQuery && (
+          <Card className="p-12 text-center">
+            <p className="text-sm text-muted-foreground">
+              Nenhuma ocorrência encontrada para &quot;{searchQuery}&quot;
+            </p>
+          </Card>
+        )}
+        {filteredTickets.map((ticket) => (
           <Card
             key={ticket.id}
             className="p-6 hover:shadow-md transition-shadow cursor-pointer"
@@ -230,12 +288,22 @@ export function TicketList() {
                     )}
                 </div>
               </div>
-              <Badge
-                variant={statusVariants[ticket.status]}
-                className="shrink-0"
-              >
-                {TICKET_STATUS_LABELS[ticket.status]}
-              </Badge>
+              <div className="flex flex-col items-end gap-3 shrink-0">
+                <TicketAssignAvatar
+                  ticketId={ticket.id}
+                  assignedUser={ticket.assigned_user}
+                  tenantId={tenantId!}
+                  currentUserId={user!.id}
+                  canAssign={canAssign}
+                  onAssignChange={loadTickets}
+                />
+                <Badge
+                  variant={statusVariants[ticket.status]}
+                  className="shrink-0"
+                >
+                  {TICKET_STATUS_LABELS[ticket.status]}
+                </Badge>
+              </div>
             </div>
           </Card>
         ))}

@@ -70,7 +70,7 @@ class TicketsService {
       .select(
         `
         *,
-        profile:user_id (
+        profile!tickets_user_id_fkey (
           id,
           nome_completo,
           email,
@@ -81,6 +81,11 @@ class TicketsService {
           nome,
           cor,
           icone
+        ),
+        assigned_user:profile!tickets_assigned_to_fkey (
+          id,
+          nome_completo,
+          avatar_url
         )
       `
       )
@@ -143,12 +148,12 @@ class TicketsService {
    * const ticket = await ticketsService.getTicketById('ticket-id')
    */
   async getTicketById(id: string): Promise<TicketWithRelations> {
-    const { data, error } = await this.supabase
+    const { data, error} = await this.supabase
       .from('tickets')
       .select(
         `
         *,
-        profile:user_id (
+        profile!tickets_user_id_fkey (
           id,
           nome_completo,
           email,
@@ -159,6 +164,11 @@ class TicketsService {
           nome,
           cor,
           icone
+        ),
+        assigned_user:profile!tickets_assigned_to_fkey (
+          id,
+          nome_completo,
+          avatar_url
         )
       `
       )
@@ -223,6 +233,26 @@ class TicketsService {
     const { data, error } = await this.supabase
       .from('tickets')
       .update({ status })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw handleSupabaseError(error)
+
+    return data
+  }
+
+  /**
+   * Atribui ticket a um usuário (assign)
+   *
+   * @example
+   * await ticketsService.assignTicket('ticket-id', 'user-id')
+   * await ticketsService.assignTicket('ticket-id', null) // Remove assignment
+   */
+  async assignTicket(id: string, assignedTo: string | null) {
+    const { data, error } = await this.supabase
+      .from('tickets')
+      .update({ assigned_to: assignedTo })
       .eq('id', id)
       .select()
       .single()
@@ -342,6 +372,25 @@ class TicketsService {
   async uploadImages(files: File[], tenantId: string, userId: string): Promise<string[]> {
     const uploadPromises = files.map((file) => this.uploadImage(file, tenantId, userId))
     return Promise.all(uploadPromises)
+  }
+
+  /**
+   * Busca membros da equipe (staff) para assign
+   *
+   * @example
+   * const staff = await ticketsService.getStaffMembers('tenant-id')
+   */
+  async getStaffMembers(tenantId: string) {
+    const { data, error } = await this.supabase
+      .from('profile')
+      .select('id, nome_completo, avatar_url, role')
+      .eq('tenant_id', tenantId)
+      .in('role', ['assessor', 'vereador', 'admin'])
+      .order('nome_completo')
+
+    if (error) throw handleSupabaseError(error)
+
+    return data
   }
 }
 

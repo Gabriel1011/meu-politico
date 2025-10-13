@@ -25,7 +25,7 @@ export async function RecentTickets({
       titulo,
       status,
       created_at,
-      profile (nome_completo, email),
+      profile!tickets_user_id_fkey (nome_completo, email),
       categories (nome, cor)
     `)
     .eq('tenant_id', tenantId)

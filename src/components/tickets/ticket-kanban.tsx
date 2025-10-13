@@ -3,24 +3,68 @@
 import { useEffect, useState } from 'react'
 import type { TicketWithRelations, TicketStatus } from '@/types'
 import { TicketDetailModal } from './ticket-detail-modal'
+import { TicketAssignAvatar } from './ticket-assign-avatar'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  DragOverEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDroppable,
+  rectIntersection,
+} from '@dnd-kit/core'
+import { SortableContext, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useUserContext } from '@/hooks/use-user-context'
 import { ticketsService } from '@/services/tickets.service'
 import { logError } from '@/lib/error-handler'
+import { GripVertical } from 'lucide-react'
 
-const KANBAN_COLUMNS: Array<{ id: TicketStatus; title: string; color: string }> = [
-  { id: 'nova', title: 'Nova', color: 'bg-blue-50' },
-  { id: 'em_analise', title: 'Em Análise', color: 'bg-yellow-50' },
-  { id: 'em_andamento', title: 'Em Andamento', color: 'bg-purple-50' },
-  { id: 'resolvida', title: 'Resolvida', color: 'bg-green-50' },
+const KANBAN_COLUMNS: Array<{
+  id: TicketStatus
+  title: string
+  color: string
+  bgColor: string
+  textColor: string
+  borderColor: string
+}> = [
+  {
+    id: 'nova',
+    title: 'Nova',
+    color: 'bg-blue-50',
+    bgColor: 'bg-blue-500',
+    textColor: 'text-blue-700',
+    borderColor: 'border-blue-200'
+  },
+  {
+    id: 'em_analise',
+    title: 'Em Análise',
+    color: 'bg-yellow-50',
+    bgColor: 'bg-yellow-500',
+    textColor: 'text-yellow-700',
+    borderColor: 'border-yellow-200'
+  },
+  {
+    id: 'em_andamento',
+    title: 'Em Andamento',
+    color: 'bg-purple-50',
+    bgColor: 'bg-purple-500',
+    textColor: 'text-purple-700',
+    borderColor: 'border-purple-200'
+  },
+  {
+    id: 'resolvida',
+    title: 'Resolvida',
+    color: 'bg-green-50',
+    bgColor: 'bg-green-500',
+    textColor: 'text-green-700',
+    borderColor: 'border-green-200'
+  },
 ]
 
 type TicketsByStatus = Record<TicketStatus, TicketWithRelations[]>
@@ -47,6 +91,167 @@ function KanbanSkeleton() {
   )
 }
 
+interface DraggableTicketCardProps {
+  ticket: TicketWithRelations
+  canChangeStatus: boolean
+  canAssign: boolean
+  tenantId: string
+  currentUserId: string
+  onClick: () => void
+  onAssignChange: () => void
+}
+
+function DraggableTicketCard({ ticket, canChangeStatus, canAssign, tenantId, currentUserId, onClick, onAssignChange }: DraggableTicketCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: ticket.id,
+    disabled: !canChangeStatus,
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className={`p-4 hover:shadow-md transition-shadow ${
+        canChangeStatus ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+      }`}
+      onClick={onClick}
+    >
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex items-start gap-2 flex-1 min-w-0">
+          {canChangeStatus && (
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing mt-1 text-muted-foreground hover:text-foreground flex-shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
+          )}
+          <h4 className="font-medium text-sm flex-1 min-w-0">{ticket.titulo}</h4>
+        </div>
+        <div className="flex-shrink-0">
+          <TicketAssignAvatar
+            ticketId={ticket.id}
+            assignedUser={ticket.assigned_user}
+            tenantId={tenantId}
+            currentUserId={currentUserId}
+            canAssign={canAssign}
+            onAssignChange={onAssignChange}
+          />
+        </div>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+        {ticket.descricao}
+      </p>
+      <div className="mt-2 flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground">
+          #{ticket.ticket_number}
+        </span>
+        {ticket.categories && (
+          <Badge
+            variant="outline"
+            className="text-xs"
+            style={{
+              borderColor: ticket.categories.cor,
+              color: ticket.categories.cor,
+              backgroundColor: `${ticket.categories.cor}15`,
+            }}
+          >
+            {ticket.categories.nome}
+          </Badge>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+interface DroppableColumnProps {
+  column: {
+    id: TicketStatus
+    title: string
+    color: string
+    bgColor: string
+    textColor: string
+    borderColor: string
+  }
+  tickets: TicketWithRelations[]
+  canChangeStatus: boolean
+  canAssign: boolean
+  tenantId: string
+  currentUserId: string
+  onTicketClick: (ticketId: string) => void
+  onAssignChange: () => void
+  isOverColumn: boolean
+}
+
+function DroppableColumn({ column, tickets, canChangeStatus, canAssign, tenantId, currentUserId, onTicketClick, onAssignChange, isOverColumn }: DroppableColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: column.id,
+  })
+
+  const showHighlight = isOver || isOverColumn
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex flex-col space-y-3 min-h-[500px] md:min-h-[600px] rounded-xl p-3 transition-all flex-shrink-0 w-[85vw] sm:w-[70vw] md:w-auto snap-center ${
+        showHighlight ? 'bg-primary/5 ring-2 ring-primary' : 'bg-muted/30'
+      }`}
+    >
+      {/* Column Header */}
+      <div className={`flex items-center justify-between p-3 rounded-lg border-l-4 ${column.borderColor} bg-card shadow-sm`}>
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${column.bgColor}`} />
+          <h3 className={`font-semibold text-sm ${column.textColor}`}>
+            {column.title}
+          </h3>
+        </div>
+        <div className={`flex items-center justify-center min-w-[28px] h-6 px-2 rounded-md ${column.bgColor} text-white text-xs font-semibold`}>
+          {tickets.length}
+        </div>
+      </div>
+
+      {/* Tickets List */}
+      <SortableContext items={tickets.map((t) => t.id)}>
+        <div className="space-y-3 flex-1">
+          {tickets.map((ticket) => (
+            <DraggableTicketCard
+              key={ticket.id}
+              ticket={ticket}
+              canChangeStatus={canChangeStatus}
+              canAssign={canAssign}
+              tenantId={tenantId}
+              currentUserId={currentUserId}
+              onClick={() => onTicketClick(ticket.id)}
+              onAssignChange={onAssignChange}
+            />
+          ))}
+
+          {tickets.length === 0 && (
+            <div className={`rounded-lg border-2 border-dashed ${column.borderColor} p-6 text-center`}>
+              <p className="text-sm text-muted-foreground">Nenhuma ocorrência</p>
+            </div>
+          )}
+        </div>
+      </SortableContext>
+    </div>
+  )
+}
+
 export function TicketKanban() {
   const { user, tenantId, role, loading: authLoading } = useUserContext()
 
@@ -60,6 +265,16 @@ export function TicketKanban() {
   const [error, setError] = useState<string | null>(null)
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [activeTicket, setActiveTicket] = useState<TicketWithRelations | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 10, // 10px movement required to start drag (better for mobile)
+      },
+    })
+  )
 
   useEffect(() => {
     if (tenantId && user) loadTickets()
@@ -97,14 +312,100 @@ export function TicketKanban() {
     }
   }
 
-  const handleStatusChange = async (ticketId: string, newStatus: TicketStatus) => {
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event
+    const ticket = findTicketById(active.id as string)
+    setActiveTicket(ticket)
+  }
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event
+    setOverId(over?.id as string | null)
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveTicket(null)
+    setOverId(null)
+
+    if (!over) return
+
+    const ticketId = active.id as string
+    let targetStatus = over.id as string
+
+    // Check if we dropped over a ticket (sortable item)
+    // If so, find which column that ticket belongs to
+    const validStatuses: TicketStatus[] = ['nova', 'em_analise', 'em_andamento', 'resolvida']
+
+    if (!validStatuses.includes(targetStatus as TicketStatus)) {
+      // We dropped over a ticket, not a column - find the column
+      for (const status of validStatuses) {
+        const column = ticketsByStatus[status]
+        if (column?.some((t) => t.id === targetStatus)) {
+          targetStatus = status
+          break
+        }
+      }
+    }
+
+    const newStatus = targetStatus as TicketStatus
+
+    // Validate that we found a valid status
+    if (!validStatuses.includes(newStatus)) {
+      console.log('Invalid drop target:', targetStatus)
+      return
+    }
+
+    // Find the ticket and check if status actually changed
+    const ticket = findTicketById(ticketId)
+    if (!ticket) {
+      console.error('Ticket not found:', ticketId)
+      return
+    }
+
+    if (ticket.status === newStatus) {
+      console.log('Status unchanged, skipping update')
+      return
+    }
+
+    console.log('Updating ticket status:', { ticketId, from: ticket.status, to: newStatus })
+
+    // Optimistic update
+    setTicketsByStatus((prev) => {
+      const updated = { ...prev }
+
+      // Remove from old column
+      if (updated[ticket.status]) {
+        updated[ticket.status] = updated[ticket.status]!.filter((t) => t.id !== ticketId)
+      }
+
+      // Add to new column
+      if (updated[newStatus]) {
+        updated[newStatus] = [...updated[newStatus]!, { ...ticket, status: newStatus }]
+      } else {
+        updated[newStatus] = [{ ...ticket, status: newStatus }]
+      }
+
+      return updated
+    })
+
+    // Update in backend
     try {
       await ticketsService.updateTicketStatus(ticketId, newStatus)
-      loadTickets()
     } catch (err) {
-      const appError = logError(err, 'TicketKanban.handleStatusChange')
+      const appError = logError(err, 'TicketKanban.handleDragEnd')
       setError(appError.userMessage)
+      // Revert optimistic update on error
+      loadTickets()
     }
+  }
+
+  const findTicketById = (id: string): TicketWithRelations | null => {
+    for (const status of Object.keys(ticketsByStatus) as TicketStatus[]) {
+      const ticket = ticketsByStatus[status]?.find((t) => t.id === id)
+      if (ticket) return ticket
+    }
+    return null
   }
 
   if (authLoading || loading) {
@@ -126,91 +427,79 @@ export function TicketKanban() {
   }
 
   const canChangeStatus = role !== 'cidadao'
+  const canAssign = ['assessor', 'vereador', 'admin'].includes(role)
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {KANBAN_COLUMNS.map((column) => (
-        <div key={column.id} className="space-y-4">
-          <Card className={`${column.color} p-4`}>
-            <h3 className="font-semibold">
-              {column.title}
-              <Badge variant="secondary" className="ml-2">
-                {ticketsByStatus[column.id]?.length || 0}
-              </Badge>
-            </h3>
-          </Card>
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={rectIntersection}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        {/* Mobile: Horizontal scroll | Desktop: Grid layout */}
+        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto pb-4 md:overflow-x-visible snap-x snap-mandatory md:snap-none scrollbar-hide">
+          {KANBAN_COLUMNS.map((column) => {
+            // Check if we're hovering over this column or any ticket in it
+            const isHoveringColumn = overId === column.id
+            const isHoveringTicket = ticketsByStatus[column.id]?.some((t) => t.id === overId) || false
+            const isOverColumn = isHoveringColumn || isHoveringTicket
 
-          <div className="space-y-3">
-            {ticketsByStatus[column.id]?.map((ticket) => (
-              <Card
-                key={ticket.id}
-                className="p-4 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => {
-                  setSelectedTicketId(ticket.id)
+            return (
+              <DroppableColumn
+                key={column.id}
+                column={column}
+                tickets={ticketsByStatus[column.id] || []}
+                canChangeStatus={canChangeStatus}
+                canAssign={canAssign}
+                tenantId={tenantId!}
+                currentUserId={user!.id}
+                isOverColumn={isOverColumn}
+                onTicketClick={(ticketId) => {
+                  setSelectedTicketId(ticketId)
                   setIsModalOpen(true)
                 }}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-sm">{ticket.titulo}</h4>
-                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                      {ticket.descricao}
-                    </p>
-                    <div className="mt-2 flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-muted-foreground">
-                        #{ticket.ticket_number}
-                      </span>
-                      {ticket.categories && (
-                        <Badge
-                          variant="outline"
-                          className="text-xs"
-                          style={{
-                            borderColor: ticket.categories.cor,
-                            color: ticket.categories.cor,
-                            backgroundColor: `${ticket.categories.cor}15`,
-                          }}
-                        >
-                          {ticket.categories.nome}
-                        </Badge>
-                      )}
-                    </div>
+                onAssignChange={loadTickets}
+              />
+            )
+          })}
+        </div>
+
+        <DragOverlay>
+          {activeTicket ? (
+            <Card className="p-4 shadow-lg rotate-3 opacity-90">
+              <div className="flex items-start gap-2">
+                <GripVertical className="h-4 w-4 mt-1 text-muted-foreground" />
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium text-sm">{activeTicket.titulo}</h4>
+                  <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                    {activeTicket.descricao}
+                  </p>
+                  <div className="mt-2 flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground">
+                      #{activeTicket.ticket_number}
+                    </span>
+                    {activeTicket.categories && (
+                      <Badge
+                        variant="outline"
+                        className="text-xs"
+                        style={{
+                          borderColor: activeTicket.categories.cor,
+                          color: activeTicket.categories.cor,
+                          backgroundColor: `${activeTicket.categories.cor}15`,
+                        }}
+                      >
+                        {activeTicket.categories.nome}
+                      </Badge>
+                    )}
                   </div>
                 </div>
-
-                {/* Status change dropdown (staff only) */}
-                {canChangeStatus && (
-                  <Select
-                    value={ticket.status}
-                    onValueChange={(value) => {
-                      handleStatusChange(ticket.id, value as TicketStatus)
-                    }}
-                  >
-                    <SelectTrigger
-                      className="mt-2"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent onClick={(e) => e.stopPropagation()}>
-                      {KANBAN_COLUMNS.map((col) => (
-                        <SelectItem key={col.id} value={col.id}>
-                          {col.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </Card>
-            )) || []}
-
-            {(ticketsByStatus[column.id]?.length || 0) === 0 && (
-              <div className="rounded-lg border-2 border-dashed border-gray-200 p-4 text-center text-sm text-gray-400">
-                Nenhuma ocorrência
               </div>
-            )}
-          </div>
-        </div>
-      ))}
+            </Card>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       <TicketDetailModal
         ticketId={selectedTicketId}
@@ -224,6 +513,6 @@ export function TicketKanban() {
         }}
         userRole={role}
       />
-    </div>
+    </>
   )
 }
