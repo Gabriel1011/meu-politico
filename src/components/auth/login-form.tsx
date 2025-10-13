@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { Loader2 } from 'lucide-react'
 import { logError } from '@/lib/error-handler'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -91,7 +92,14 @@ export function LoginForm() {
         </div>
 
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? 'Entrando...' : 'Entrar'}
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Entrando...
+            </span>
+          ) : (
+            'Entrar'
+          )}
         </Button>
       </form>
     </div>
