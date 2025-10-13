@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ImageUpload } from '@/components/ui/image-upload'
+import { ReactDateTimePicker } from '@/components/ui/react-date-time-picker'
 import { createClient } from '@/lib/supabase/client'
-import { format } from 'date-fns'
 
 interface EventFormProps {
   event?: AgendaEvent | null
@@ -29,16 +29,23 @@ export function EventForm({
   const [title, setTitle] = useState(event?.title || '')
   const [description, setDescription] = useState(event?.description || '')
   const [location, setLocation] = useState(event?.location || '')
-  const [startDate, setStartDate] = useState(
-    event
-      ? format(new Date(event.start_date), "yyyy-MM-dd'T'HH:mm")
-      : format(new Date(), "yyyy-MM-dd'T'HH:mm")
+
+  // Date and time state
+  const [startDate, setStartDate] = useState<Date | undefined>(
+    event ? new Date(event.start_date) : (() => {
+      const now = new Date()
+      now.setHours(9, 0, 0, 0)
+      return now
+    })()
   )
-  const [endDate, setEndDate] = useState(
-    event
-      ? format(new Date(event.end_date), "yyyy-MM-dd'T'HH:mm")
-      : format(new Date(), "yyyy-MM-dd'T'HH:mm")
+  const [endDate, setEndDate] = useState<Date | undefined>(
+    event ? new Date(event.end_date) : (() => {
+      const now = new Date()
+      now.setHours(10, 0, 0, 0)
+      return now
+    })()
   )
+
   const [bannerUrl, setBannerUrl] = useState<string | null>(event?.banner_url || null)
   const [published, setPublished] = useState(event?.published ?? false)
 
@@ -54,11 +61,14 @@ export function EventForm({
 
     try {
       // Validate dates
-      const startDateObj = new Date(startDate)
-      const endDateObj = new Date(endDate)
+      if (!startDate || !endDate) {
+        setError('Por favor, selecione as datas de início e término')
+        setLoading(false)
+        return
+      }
 
-      if (endDateObj < startDateObj) {
-        setError('A data de término deve ser posterior à data de início')
+      if (endDate < startDate) {
+        setError('A data/hora de término deve ser posterior à data/hora de início')
         setLoading(false)
         return
       }
@@ -68,8 +78,8 @@ export function EventForm({
         title: title,
         description: description,
         location: location || null,
-        start_date: startDateObj.toISOString(),
-        end_date: endDateObj.toISOString(),
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
         banner_url: bannerUrl || null,
         published: published,
       }
@@ -102,7 +112,7 @@ export function EventForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {error}
@@ -133,34 +143,34 @@ export function EventForm({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Descreva os detalhes do evento..."
           required
-          rows={5}
+          rows={4}
           className="resize-none"
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* Date and Time Selection */}
+      <div className="space-y-3">
         <div className="space-y-2">
-          <Label htmlFor="dataInicio">
-            Data/Hora de Início <span className="text-destructive">*</span>
+          <Label>
+            Data e Hora de Início <span className="text-destructive">*</span>
           </Label>
-          <Input
-            id="dataInicio"
-            type="datetime-local"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+          <ReactDateTimePicker
+            selected={startDate}
+            onChange={(date) => setStartDate(date || undefined)}
+            placeholder="Selecione a data e hora de início"
             required
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="dataFim">
-            Data/Hora de Término <span className="text-destructive">*</span>
+          <Label>
+            Data e Hora de Término <span className="text-destructive">*</span>
           </Label>
-          <Input
-            id="dataFim"
-            type="datetime-local"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
+          <ReactDateTimePicker
+            selected={endDate}
+            onChange={(date) => setEndDate(date || undefined)}
+            placeholder="Selecione a data e hora de término"
+            minDate={startDate}
             required
           />
         </div>
@@ -198,12 +208,12 @@ export function EventForm({
           onChange={(e) => setPublished(e.target.checked)}
           className="h-4 w-4 rounded border-gray-300"
         />
-        <Label htmlFor="publicado" className="cursor-pointer">
+        <Label htmlFor="publicado" className="cursor-pointer text-sm">
           Publicar evento (visível publicamente)
         </Label>
       </div>
 
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 pt-2">
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar

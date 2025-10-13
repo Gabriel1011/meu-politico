@@ -47,20 +47,17 @@ export default async function AgendaPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Agenda</h1>
-        <p className="text-muted-foreground">
-          {isStaff
-            ? 'Gerencie os eventos da sua agenda pública'
-            : 'Acompanhe os eventos da agenda'}
-        </p>
-      </div>
-
+    <div className="flex flex-col h-full">
       <AgendaManagementClient
         events={events || []}
         tenantId={profile.tenant_id}
         isStaff={isStaff}
+        headerTitle="Agenda"
+        headerDescription={
+          isStaff
+            ? 'Gerencie os eventos da sua agenda pública'
+            : 'Acompanhe os eventos da agenda'
+        }
       />
     </div>
   )

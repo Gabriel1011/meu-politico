@@ -7,6 +7,18 @@ import type { Database } from '@/types/database.types'
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 import { cn, formatDateTime } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -380,9 +392,11 @@ useEffect(() => {
       </div>
 
       {successMessage && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          {successMessage}
-        </div>
+        <Card className="border-emerald-200 bg-emerald-50">
+          <CardContent className="px-4 py-3 text-sm text-emerald-700">
+            {successMessage}
+          </CardContent>
+        </Card>
       )}
 
       {filters.length > 0 && (
@@ -411,48 +425,62 @@ useEffect(() => {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-4 rounded-lg border border-dashed border-muted-foreground/30 p-4">
-        <label className="flex flex-col gap-2 text-sm text-muted-foreground">
-          <span className="text-xs font-semibold uppercase tracking-wide">Status</span>
-          <select
-            value={readFilter}
-            onChange={(event) => setReadFilter(event.target.value as ReadFilter)}
-            className="w-48 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            <option value="all">Todas</option>
-            <option value="unread">Não lidas</option>
-            <option value="read">Lidas</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-2 text-sm text-muted-foreground">
-          <span className="text-xs font-semibold uppercase tracking-wide">Ordenar</span>
-          <select
-            value={sortOrder}
-            onChange={(event) => setSortOrder(event.target.value as SortOrder)}
-            className="w-48 rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            <option value="desc">Mais recentes</option>
-            <option value="asc">Mais antigas</option>
-          </select>
-        </label>
-      </div>
+      <Card className="border-dashed">
+        <CardContent className="flex flex-wrap gap-4 p-4">
+          <div className="flex flex-col gap-2">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Status
+            </Label>
+            <Select value={readFilter} onValueChange={(value) => setReadFilter(value as ReadFilter)}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="unread">Não lidas</SelectItem>
+                <SelectItem value="read">Lidas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Ordenar
+            </Label>
+            <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as SortOrder)}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="desc">Mais recentes</SelectItem>
+                <SelectItem value="asc">Mais antigas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
       {isLoading ? (
-        <div className="flex items-center justify-center rounded-lg border border-dashed p-12 text-sm text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Carregando notificações...
-        </div>
+        <Card className="border-dashed">
+          <CardContent className="flex items-center justify-center p-12 text-sm text-muted-foreground">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Carregando notificações...
+          </CardContent>
+        </Card>
       ) : error ? (
-        <div className="rounded-lg border border-dashed border-red-200 bg-red-50 p-6 text-sm text-red-700">
-          {error}
-        </div>
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-6 text-sm text-red-700">
+            {error}
+          </CardContent>
+        </Card>
       ) : showEmptyState ? (
-        <div className="rounded-lg border border-dashed border-muted-foreground/30 p-12 text-center text-sm text-muted-foreground">
-          <p className="font-medium">Nenhuma notificação encontrada.</p>
-          <p className="mt-2 text-xs">
-            As notificações aparecerão aqui assim que forem enviadas para este grupo.
-          </p>
-        </div>
+        <Card className="border-dashed">
+          <CardContent className="p-12 text-center text-sm text-muted-foreground">
+            <p className="font-medium">Nenhuma notificação encontrada.</p>
+            <p className="mt-2 text-xs">
+              As notificações aparecerão aqui assim que forem enviadas para este grupo.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-4">
           {isRefreshing && (
@@ -461,80 +489,82 @@ useEffect(() => {
               Sincronizando...
             </div>
           )}
-          <ul className="space-y-3">
+          <div className="space-y-3">
             {notifications.map((notification) => {
               const isOwn = notification.recipient_id === userId
               const isUnread = !notification.read_at
               const isUpdating = updatingIds.has(notification.id)
 
               return (
-                <li
+                <Card
                   key={notification.id}
                   className={cn(
-                    'rounded-xl border p-4 transition-shadow hover:shadow-sm',
-                    isUnread ? 'border-primary/40 bg-primary/5' : 'border-muted bg-white'
+                    'transition-shadow hover:shadow-sm',
+                    isUnread ? 'border-primary/40 bg-primary/5' : 'bg-white'
                   )}
                 >
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-primary">
-                          {notification.type}
-                        </span>
-                        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                          {formatDateTime(notification.created_at)}
-                        </span>
-                        {isUnread && (
-                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
-                            Não lida
+                  <CardContent className="p-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs font-semibold uppercase">
+                            {notification.type}
+                          </Badge>
+                          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                            {formatDateTime(notification.created_at)}
                           </span>
+                          {isUnread && (
+                            <Badge variant="secondary" className="bg-amber-100 text-amber-700 text-[10px]">
+                              Não lida
+                            </Badge>
+                          )}
+                        </div>
+                        <h3 className="text-base font-semibold text-gray-900">
+                          {notification.title}
+                        </h3>
+                        {notification.message && (
+                          <p className="text-sm text-muted-foreground">{notification.message}</p>
+                        )}
+                        {notification.destinatario && (
+                          <p className="text-xs text-muted-foreground">
+                            Destinatário:{' '}
+                            <span className="font-medium">
+                              {notification.destinatario.nome_completo || 'Usuário sem nome'}
+                            </span>{' '}
+                            <span className="text-muted-foreground/80">
+                              ({notification.destinatario.role})
+                            </span>
+                          </p>
                         )}
                       </div>
-                      <h3 className="text-base font-semibold text-gray-900">
-                        {notification.title}
-                      </h3>
-                      {notification.message && (
-                        <p className="text-sm text-muted-foreground">{notification.message}</p>
-                      )}
-                      {notification.destinatario && (
-                        <p className="text-xs text-muted-foreground">
-                          Destinatário:{' '}
-                          <span className="font-medium">
-                            {notification.destinatario.nome_completo || 'Usuário sem nome'}
-                          </span>{' '}
-                          <span className="text-muted-foreground/80">
-                            ({notification.destinatario.role})
-                          </span>
-                        </p>
-                      )}
+                      <div className="flex flex-col items-start gap-2 md:items-end">
+                        {isOwn ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toggleReadState(notification)}
+                            disabled={isUpdating}
+                            className="gap-2"
+                          >
+                            {isUpdating ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <CheckCheck className="h-4 w-4" />
+                            )}
+                            {isUnread ? 'Marcar como lida' : 'Marcar como não lida'}
+                          </Button>
+                        ) : (
+                          <Badge variant="secondary" className="text-[11px]">
+                            Visualização somente leitura
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex flex-col items-start gap-2 md:items-end">
-                      {isOwn ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => toggleReadState(notification)}
-                          disabled={isUpdating}
-                          className="gap-2"
-                        >
-                          {isUpdating ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <CheckCheck className="h-4 w-4" />
-                          )}
-                          {isUnread ? 'Marcar como lida' : 'Marcar como não lida'}
-                        </Button>
-                      ) : (
-                        <span className="rounded-full bg-muted px-3 py-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-                          Visualização somente leitura
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </li>
+                  </CardContent>
+                </Card>
               )
             })}
-          </ul>
+          </div>
         </div>
       )}
       {canSendNotifications && (
@@ -550,19 +580,21 @@ useEffect(() => {
 
             <form className="space-y-4" onSubmit={handleCreateNotification}>
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Label className="text-xs font-semibold uppercase tracking-wide">
                   Destinatários
-                </span>
-                <div className="rounded-md border border-dashed border-muted-foreground/40 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-                  Todos os cidadãos do gabinete ({recipients.length})
-                </div>
+                </Label>
+                <Card className="border-dashed bg-muted/30">
+                  <CardContent className="px-3 py-2 text-sm text-muted-foreground">
+                    Todos os cidadãos do gabinete ({recipients.length})
+                  </CardContent>
+                </Card>
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-muted-foreground" htmlFor="titulo">
+                <Label htmlFor="titulo">
                   Título
-                </label>
-                <input
+                </Label>
+                <Input
                   id="titulo"
                   type="text"
                   value={titulo}
@@ -570,15 +602,14 @@ useEffect(() => {
                   required
                   maxLength={120}
                   placeholder="Ex: Reunião com a comunidade"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-muted-foreground" htmlFor="mensagem">
+                <Label htmlFor="mensagem">
                   Mensagem
-                </label>
-                <textarea
+                </Label>
+                <Textarea
                   id="mensagem"
                   value={mensagem}
                   onChange={(event) => setMensagem(event.target.value)}
@@ -586,7 +617,6 @@ useEffect(() => {
                   rows={5}
                   maxLength={600}
                   placeholder="Compartilhe os detalhes da atualização."
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
 

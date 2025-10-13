@@ -3,33 +3,36 @@
 import { useState } from 'react'
 import { AgendaEvent } from '@/types'
 import { EventCalendar } from '@/components/agenda/event-calendar'
+import { EventList } from '@/components/agenda/event-list'
 import { EventDetailModal } from '@/components/agenda/event-detail-modal'
 import { EventForm } from '@/components/agenda/event-form'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Plus, Pencil, Trash2, List, Calendar as CalendarIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+
+type ViewMode = 'list' | 'calendar'
 
 interface AgendaManagementClientProps {
   events: AgendaEvent[]
   tenantId: string
   isStaff: boolean
+  headerTitle?: string
+  headerDescription?: string
 }
 
 export function AgendaManagementClient({
   events: initialEvents,
   tenantId,
   isStaff,
+  headerTitle,
+  headerDescription,
 }: AgendaManagementClientProps) {
   const router = useRouter()
   const supabase = createClient()
 
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [events, setEvents] = useState(initialEvents)
   const [selectedEvent, setSelectedEvent] = useState<AgendaEvent | null>(null)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
@@ -113,64 +116,134 @@ export function AgendaManagementClient({
 
   return (
     <>
-      {/* Action Buttons */}
-      {isStaff && (
-        <div className="mb-4 flex justify-end">
-          <Button onClick={handleCreateEvent}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Evento
-          </Button>
+      {viewMode === 'calendar' ? (
+        /* Calendar Mode - Full viewport layout */
+        <div className="fixed inset-0 z-10 bg-background lg:left-64" style={{ top: '64px' }}>
+          <div className="flex flex-col h-full">
+            {/* Action Buttons - single line at top */}
+            <div className="px-6 py-4 border-b flex items-center justify-between bg-background">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                >
+                  <List className="mr-2 h-4 w-4" />
+                  Lista
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setViewMode('calendar')}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  Calendário
+                </Button>
+              </div>
+
+              {isStaff && (
+                <Button onClick={handleCreateEvent}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo Evento
+                </Button>
+              )}
+            </div>
+
+            {/* Calendar Content - Full height */}
+            <div className="flex-1 p-6 overflow-hidden">
+              <EventCalendar
+                events={events}
+                onSelectEvent={handleSelectEvent}
+                onSelectSlot={isStaff ? handleSelectSlot : undefined}
+                selectable={isStaff}
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* List Mode - Normal container layout */
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          {headerTitle && (
+            <div className="mb-4">
+              <h1 className="text-3xl font-bold">{headerTitle}</h1>
+              {headerDescription && (
+                <p className="text-muted-foreground text-sm">{headerDescription}</p>
+              )}
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setViewMode('list')}
+              >
+                <List className="mr-2 h-4 w-4" />
+                Lista
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setViewMode('calendar')}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                Calendário
+              </Button>
+            </div>
+
+            {isStaff && (
+              <Button onClick={handleCreateEvent}>
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Evento
+              </Button>
+            )}
+          </div>
+
+          {/* List Content */}
+          <div className="flex-1 min-h-0 overflow-auto">
+            <EventList events={events} onEventClick={handleSelectEvent} />
+          </div>
         </div>
       )}
 
-      {/* Calendar */}
-      <EventCalendar
-        events={events}
-        onSelectEvent={handleSelectEvent}
-        onSelectSlot={isStaff ? handleSelectSlot : undefined}
-        selectable={isStaff}
-      />
-
       {/* Detail Modal with Edit/Delete actions */}
-      <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          {selectedEvent && (
-            <>
-              <EventDetailModal
-                event={selectedEvent}
-                open={true}
-                onOpenChange={() => {}}
-              />
-
-              {isStaff && (
-                <div className="mt-4 flex justify-end gap-2 border-t pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={handleEditEvent}
-                    disabled={deleting}
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Editar
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={handleDeleteEvent}
-                    disabled={deleting}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    {deleting ? 'Excluindo...' : 'Excluir'}
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      {selectedEvent && (
+        <EventDetailModal
+          event={selectedEvent}
+          isOpen={detailModalOpen}
+          onClose={() => setDetailModalOpen(false)}
+          actions={
+            isStaff ? (
+              <div className="flex justify-end gap-2 border-t pt-4">
+                <Button
+                  variant="outline"
+                  onClick={handleEditEvent}
+                  disabled={deleting}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Editar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteEvent}
+                  disabled={deleting}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {deleting ? 'Excluindo...' : 'Excluir'}
+                </Button>
+              </div>
+            ) : undefined
+          }
+        />
+      )}
 
       {/* Form Modal */}
       {isStaff && (
         <Dialog open={formModalOpen} onOpenChange={setFormModalOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingEvent?.id ? 'Editar Evento' : 'Novo Evento'}
