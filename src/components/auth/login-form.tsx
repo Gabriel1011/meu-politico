@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { logError } from '@/lib/error-handler'
 import { Button } from '@/components/ui/button'
@@ -82,30 +81,18 @@ export function LoginForm() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="text-sm">
-            <Link
-              href="/recuperar-senha"
-              className="font-medium text-primary hover:text-primary/90"
-            >
-              Esqueceu sua senha?
-            </Link>
-          </div>
+        <div className="flex items-center justify-end text-sm">
+          <a
+            href="/recuperar-senha"
+            className="font-medium text-primary hover:text-primary/90"
+          >
+            Esqueceu sua senha?
+          </a>
         </div>
 
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? 'Entrando...' : 'Entrar'}
         </Button>
-
-        <div className="text-center text-sm">
-          <span className="text-gray-600">Não tem uma conta? </span>
-          <Link
-            href="/cadastro"
-            className="font-medium text-primary hover:text-primary/90"
-          >
-            Cadastre-se
-          </Link>
-        </div>
       </form>
     </div>
   )
