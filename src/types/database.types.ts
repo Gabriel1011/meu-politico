@@ -59,6 +59,7 @@ export interface Database {
           nome_completo: string | null
           avatar_url: string | null
           role: 'cidadao' | 'assessor' | 'politico' | 'admin'
+          active: boolean
           metadata: Json
           created_at: string
           updated_at: string
@@ -70,6 +71,7 @@ export interface Database {
           nome_completo?: string | null
           avatar_url?: string | null
           role?: 'cidadao' | 'assessor' | 'politico' | 'admin'
+          active?: boolean
           metadata?: Json
           created_at?: string
           updated_at?: string
@@ -81,6 +83,7 @@ export interface Database {
           nome_completo?: string | null
           avatar_url?: string | null
           role?: 'cidadao' | 'assessor' | 'politico' | 'admin'
+          active?: boolean
           metadata?: Json
           created_at?: string
           updated_at?: string

@@ -2,12 +2,12 @@ import { createClient } from '@/lib/supabase/client'
 import type { Database } from '@/types/database.types'
 
 type Profile = Database['public']['Tables']['profile']['Row']
-type ProfileInsert = Database['public']['Tables']['profile']['Insert']
 type ProfileUpdate = Database['public']['Tables']['profile']['Update']
 
 export interface UserFilters {
   searchTerm?: string
   role?: Profile['role']
+  includeInactive?: boolean // Default false - only show active users
 }
 
 export interface PaginationParams {
@@ -30,6 +30,7 @@ export interface UserWithAuth {
   nome_completo: string | null
   avatar_url: string | null
   role: 'cidadao' | 'assessor' | 'politico' | 'admin'
+  active: boolean
   metadata: any
   created_at: string
   updated_at: string
@@ -63,6 +64,11 @@ class UsersService {
 
     if (filters.role) {
       query = query.eq('role', filters.role)
+    }
+
+    // Filter by active status (default: only active users)
+    if (!filters.includeInactive) {
+      query = query.eq('active', true)
     }
 
     // Apply pagination
@@ -133,7 +139,7 @@ class UsersService {
   }
 
   /**
-   * Delete user (soft delete by setting active = false)
+   * Soft delete user (deactivate instead of hard delete for traceability)
    */
   async deleteUser(id: string): Promise<void> {
     const { error } = await this.supabase
@@ -142,13 +148,13 @@ class UsersService {
       .eq('id', id)
 
     if (error) {
-      console.error('Error deleting user:', error)
-      throw new Error('Erro ao deletar usuário')
+      console.error('Error deactivating user:', error)
+      throw new Error('Erro ao desativar usuário')
     }
   }
 
   /**
-   * Activate/deactivate user
+   * Activate/deactivate user (soft delete)
    */
   async toggleUserStatus(id: string, active: boolean): Promise<Profile> {
     const { data, error } = await this.supabase
@@ -174,7 +180,7 @@ class UsersService {
   }
 
   /**
-   * Get users count by role
+   * Get users count by role (only active users)
    */
   async getUsersCountByRole(tenantId: string): Promise<{
     cidadao: number
@@ -189,6 +195,7 @@ class UsersService {
           .select('*', { count: 'exact', head: true })
           .eq('tenant_id', tenantId)
           .eq('role', role)
+          .eq('active', true)
 
         return { role, count: count || 0 }
       })

@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { MoreHorizontal, ChevronLeft, ChevronRight, Edit, UserX, UserCheck } from 'lucide-react'
+import { MoreHorizontal, ChevronLeft, ChevronRight, Edit, UserMinus, UserPlus } from 'lucide-react'
 import { UserFormDialog } from './user-form-dialog'
 import { usersService } from '@/services/users.service'
 
@@ -70,13 +70,20 @@ export function UsersTable({
     setIsEditDialogOpen(true)
   }
 
-  const handleDeleteUser = async (user: UserWithAuth) => {
+  const handleToggleUserStatus = async (user: UserWithAuth) => {
+    const action = user.active ? 'desativar' : 'ativar'
+    const confirm = window.confirm(
+      `Tem certeza que deseja ${action} o usuário "${user.nome_completo || user.email}"?`
+    )
+
+    if (!confirm) return
+
     try {
-      await usersService.deleteUser(user.id)
-      alert('Usuário removido com sucesso')
+      await usersService.toggleUserStatus(user.id, !user.active)
+      alert(`Usuário ${user.active ? 'desativado' : 'ativado'} com sucesso`)
       onRefresh()
     } catch (error) {
-      alert('Erro ao remover usuário')
+      alert(`Erro ao ${action} usuário`)
     }
   }
 
@@ -149,8 +156,8 @@ export function UsersTable({
                   {user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '-'}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="default">
-                    Ativo
+                  <Badge variant={user.active ? "default" : "secondary"}>
+                    {user.active ? 'Ativo' : 'Inativo'}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -166,6 +173,22 @@ export function UsersTable({
                       <DropdownMenuItem onClick={() => handleEditUser(user)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleToggleUserStatus(user)}
+                        className={user.active ? 'text-red-600' : 'text-green-600'}
+                      >
+                        {user.active ? (
+                          <>
+                            <UserMinus className="mr-2 h-4 w-4" />
+                            Desativar
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Ativar
+                          </>
+                        )}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuLabel className="text-xs text-muted-foreground">

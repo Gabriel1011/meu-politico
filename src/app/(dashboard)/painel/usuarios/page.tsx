@@ -6,6 +6,7 @@ import { UsersTable } from '@/components/users/users-table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Search, Users as UsersIcon } from 'lucide-react'
 import { useUserContext } from '@/hooks/use-user-context'
 
@@ -16,6 +17,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [includeInactive, setIncludeInactive] = useState(false)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
@@ -33,6 +35,7 @@ export default function UsersPage() {
         const filters: UserFilters = {
           searchTerm: searchTerm || undefined,
           role: roleFilter !== 'all' ? roleFilter as any : undefined,
+          includeInactive,
         }
 
         const response = await usersService.getUsers(tenantId, filters, { page, pageSize })
@@ -47,7 +50,7 @@ export default function UsersPage() {
     }
 
     fetchUsers()
-  }, [tenantId, searchTerm, roleFilter, page])
+  }, [tenantId, searchTerm, roleFilter, includeInactive, page])
 
   // Fetch stats
   useEffect(() => {
@@ -83,6 +86,7 @@ export default function UsersPage() {
       const filters: UserFilters = {
         searchTerm: searchTerm || undefined,
         role: roleFilter !== 'all' ? roleFilter as any : undefined,
+        includeInactive,
       }
 
       const response = await usersService.getUsers(tenantId, filters, { page, pageSize })
@@ -192,6 +196,25 @@ export default function UsersPage() {
                 <SelectItem value="politico">Político</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Include Inactive Checkbox */}
+            <div className="flex items-center gap-2 h-10 px-2">
+              <Checkbox
+                id="include-inactive"
+                checked={includeInactive}
+                onCheckedChange={(checked: boolean) => {
+                  setIncludeInactive(checked)
+                  setPage(1)
+                }}
+                style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }}
+              />
+              <label
+                htmlFor="include-inactive"
+                className="text-sm text-muted-foreground cursor-pointer select-none"
+              >
+                Usuários desativados
+              </label>
+            </div>
           </div>
 
           {/* Users Table */}
