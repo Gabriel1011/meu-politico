@@ -14,6 +14,8 @@ import { logError } from '@/lib/error-handler'
 interface EventFormProps {
   event?: AgendaEvent | null
   tenantId: string
+  initialStartDate?: Date
+  initialEndDate?: Date
   onSuccess?: () => void
   onCancel?: () => void
 }
@@ -21,10 +23,12 @@ interface EventFormProps {
 export function EventForm({
   event,
   tenantId,
+  initialStartDate,
+  initialEndDate,
   onSuccess,
   onCancel,
 }: EventFormProps) {
-  const isEditing = !!event
+  const isEditing = !!event?.id
 
   // Form state
   const [title, setTitle] = useState(event?.title || '')
@@ -33,14 +37,14 @@ export function EventForm({
 
   // Date and time state
   const [startDate, setStartDate] = useState<Date | undefined>(
-    event ? new Date(event.start_date) : (() => {
+    event ? new Date(event.start_date) : initialStartDate || (() => {
       const now = new Date()
       now.setHours(9, 0, 0, 0)
       return now
     })()
   )
   const [endDate, setEndDate] = useState<Date | undefined>(
-    event ? new Date(event.end_date) : (() => {
+    event ? new Date(event.end_date) : initialEndDate || (() => {
       const now = new Date()
       now.setHours(10, 0, 0, 0)
       return now

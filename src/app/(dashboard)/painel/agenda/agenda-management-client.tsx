@@ -41,6 +41,7 @@ export function AgendaManagementClient({
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [formModalOpen, setFormModalOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<AgendaEvent | null>(null)
+  const [selectedSlot, setSelectedSlot] = useState<{ start: Date; end: Date } | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   const handleSelectEvent = (event: AgendaEvent) => {
@@ -50,12 +51,14 @@ export function AgendaManagementClient({
 
   const handleCreateEvent = () => {
     setEditingEvent(null)
+    setSelectedSlot(null)
     setFormModalOpen(true)
   }
 
   const handleEditEvent = () => {
     if (selectedEvent) {
       setEditingEvent(selectedEvent)
+      setSelectedSlot(null)
       setDetailModalOpen(false)
       setFormModalOpen(true)
     }
@@ -99,20 +102,9 @@ export function AgendaManagementClient({
 
   const handleSelectSlot = (slotInfo: { start: Date; end: Date }) => {
     if (isStaff) {
-      // Pre-fill form with selected time slot
-      setEditingEvent({
-        id: '',
-        tenant_id: tenantId,
-        title: '',
-        description: '',
-        location: null,
-        start_date: slotInfo.start.toISOString(),
-        end_date: slotInfo.end.toISOString(),
-        banner_url: null,
-        published: false,
-        created_at: '',
-        updated_at: '',
-      })
+      // Store selected slot for pre-filling form
+      setSelectedSlot(slotInfo)
+      setEditingEvent(null)
       setFormModalOpen(true)
     }
   }
@@ -262,6 +254,8 @@ export function AgendaManagementClient({
             <EventForm
               event={editingEvent}
               tenantId={tenantId}
+              initialStartDate={selectedSlot?.start}
+              initialEndDate={selectedSlot?.end}
               onSuccess={handleFormSuccess}
               onCancel={() => setFormModalOpen(false)}
             />

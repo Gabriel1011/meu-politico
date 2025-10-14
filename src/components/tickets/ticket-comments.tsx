@@ -46,7 +46,7 @@ export function TicketComments({ ticketId, userRole }: TicketCommentsProps) {
         .from('ticket_comments')
         .select(`
           *,
-          profile (id, nome_completo, avatar_url)
+          profile (id, nome_completo, avatar_url, role)
         `)
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: true })
@@ -123,38 +123,54 @@ export function TicketComments({ ticketId, userRole }: TicketCommentsProps) {
         </div>
       ) : (
         <div className="space-y-3">
-          {comments.map((comment) => (
-            <div
-              key={comment.id}
-              className={`rounded-lg border p-4 ${
-                !comment.publico ? 'bg-yellow-50 border-yellow-200' : 'bg-white'
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white font-medium">
-                  {comment.profile?.nome_completo?.charAt(0).toUpperCase() || '?'}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">
-                      {comment.profile?.nome_completo || 'Usuário'}
-                    </span>
-                    {!comment.publico && (
-                      <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">
-                        Interno
-                      </span>
-                    )}
-                    <span className="text-xs text-gray-500">
-                      {formatDateTime(comment.created_at)}
-                    </span>
+          {comments.map((comment) => {
+            const isBackoffice = comment.profile?.role && ['assessor', 'politico', 'admin'].includes(comment.profile.role)
+            const isPrivate = !comment.publico
+
+            // Define background color based on role and privacy
+            let bgColor = 'bg-white border-gray-200'
+            if (isPrivate) {
+              bgColor = 'bg-yellow-50 border-yellow-200'
+            } else if (isBackoffice) {
+              bgColor = 'bg-blue-50 border-blue-200'
+            }
+
+            return (
+              <div
+                key={comment.id}
+                className={`rounded-lg border p-4 ${bgColor}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white font-medium">
+                    {comment.profile?.nome_completo?.charAt(0).toUpperCase() || '?'}
                   </div>
-                  <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">
-                    {comment.mensagem}
-                  </p>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">
+                        {comment.profile?.nome_completo || 'Usuário'}
+                      </span>
+                      {isBackoffice && (
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+                          Equipe
+                        </span>
+                      )}
+                      {isPrivate && (
+                        <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">
+                          Interno
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-500">
+                        {formatDateTime(comment.created_at)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">
+                      {comment.mensagem}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

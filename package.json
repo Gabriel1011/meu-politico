@@ -12,7 +12,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:status": "supabase db diff --linked",
-    "db:push": "supabase db push --linked",
+    "db:push": "supabase db push --linked --yes",
     "db:pull": "supabase db pull --linked",
     "db:reset": "supabase db reset --linked --yes",
     "db:reset:local": "supabase db reset",

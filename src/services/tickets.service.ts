@@ -385,7 +385,7 @@ class TicketsService {
       .from('profile')
       .select('id, nome_completo, avatar_url, role')
       .eq('tenant_id', tenantId)
-      .in('role', ['assessor', 'vereador', 'admin'])
+      .in('role', ['assessor', 'politico', 'admin'])
       .order('nome_completo')
 
     if (error) throw handleSupabaseError(error)

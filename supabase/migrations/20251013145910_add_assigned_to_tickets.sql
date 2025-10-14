@@ -25,7 +25,7 @@ CREATE POLICY "Staff can assign tickets"
       SELECT 1 FROM profile
       WHERE profile.id = auth.uid()
         AND profile.tenant_id = tickets.tenant_id
-        AND profile.role IN ('assessor', 'vereador', 'admin')
+        AND profile.role IN ('assessor', 'politico', 'admin')
     )
   )
   WITH CHECK (
@@ -33,7 +33,7 @@ CREATE POLICY "Staff can assign tickets"
       SELECT 1 FROM profile
       WHERE profile.id = auth.uid()
         AND profile.tenant_id = tickets.tenant_id
-        AND profile.role IN ('assessor', 'vereador', 'admin')
+        AND profile.role IN ('assessor', 'politico', 'admin')
     )
   );
 

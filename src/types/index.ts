@@ -26,7 +26,7 @@ export type TicketWithRelations = Ticket & {
 }
 
 export type TicketCommentWithAuthor = TicketComment & {
-  profile?: Pick<Profile, 'id' | 'nome_completo' | 'avatar_url'>
+  profile?: Pick<Profile, 'id' | 'nome_completo' | 'avatar_url' | 'role'>
 }
 
 // User roles
