@@ -9,8 +9,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -19,22 +17,46 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { MapPin, User, UserCheck } from 'lucide-react'
+import { MapPin, Hash, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { TicketComments } from './ticket-comments'
+import { TicketAssignAvatar } from './ticket-assign-avatar'
 import { ticketsService } from '@/services/tickets.service'
 import { logError } from '@/lib/error-handler'
 import { useUserContext } from '@/hooks/use-user-context'
 import type { TicketWithRelations, TicketStatus, UserRole } from '@/types'
-import { TICKET_STATUS_LABELS } from '@/types'
 
-// Status variants for Badge component
-const STATUS_VARIANTS = {
-  nova: 'default' as const,
-  em_analise: 'secondary' as const,
-  em_andamento: 'default' as const,
-  resolvida: 'success' as const,
-  encerrada: 'secondary' as const,
-  cancelada: 'destructive' as const,
+// Status config (ClickUp-inspired)
+const STATUS_CONFIG = {
+  nova: {
+    label: 'Nova',
+    color: 'bg-gray-100 text-gray-800 border-gray-300',
+    dotColor: 'bg-gray-500',
+  },
+  em_analise: {
+    label: 'Em Análise',
+    color: 'bg-blue-100 text-blue-800 border-blue-300',
+    dotColor: 'bg-blue-500',
+  },
+  em_andamento: {
+    label: 'Em Andamento',
+    color: 'bg-purple-100 text-purple-800 border-purple-300',
+    dotColor: 'bg-purple-500',
+  },
+  resolvida: {
+    label: 'Resolvida',
+    color: 'bg-green-100 text-green-800 border-green-300',
+    dotColor: 'bg-green-500',
+  },
+  encerrada: {
+    label: 'Encerrada',
+    color: 'bg-slate-100 text-slate-800 border-slate-300',
+    dotColor: 'bg-slate-500',
+  },
+  cancelada: {
+    label: 'Cancelada',
+    color: 'bg-red-100 text-red-800 border-red-300',
+    dotColor: 'bg-red-500',
+  },
 }
 
 interface TicketDetailModalProps {
@@ -42,13 +64,6 @@ interface TicketDetailModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   userRole: UserRole
-}
-
-type StaffMember = {
-  id: string
-  nome_completo: string | null
-  avatar_url: string | null
-  role: string
 }
 
 export function TicketDetailModal({
@@ -62,15 +77,11 @@ export function TicketDetailModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([])
-  const [loadingStaff, setLoadingStaff] = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
   useEffect(() => {
     if (ticketId && open) {
       loadTicket()
-      if (userRole !== 'cidadao' && tenantId) {
-        loadStaffMembers()
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketId, open])
@@ -92,42 +103,44 @@ export function TicketDetailModal({
     }
   }
 
-  const loadStaffMembers = async () => {
-    if (!tenantId) return
-
-    setLoadingStaff(true)
-    try {
-      const members = await ticketsService.getStaffMembers(tenantId)
-      setStaffMembers(members as StaffMember[])
-    } catch (err) {
-      logError(err, 'TicketDetailModal.loadStaffMembers')
-    } finally {
-      setLoadingStaff(false)
-    }
-  }
-
   const handleStatusChange = async (newStatus: TicketStatus) => {
-    if (!ticketId) return
+    if (!ticketId || !ticket) return
+
+    // Optimistic update
+    const previousStatus = ticket.status
+    setTicket({ ...ticket, status: newStatus })
 
     try {
       await ticketsService.updateTicketStatus(ticketId, newStatus)
-      loadTicket()
     } catch (err) {
+      // Rollback on error
+      setTicket({ ...ticket, status: previousStatus })
       const appError = logError(err, 'TicketDetailModal.handleStatusChange')
       setError(appError.userMessage)
     }
   }
 
-  const handleAssignChange = async (assignedToId: string | null) => {
-    if (!ticketId) return
+  const handleAssignChange = async (userId: string | null) => {
+    if (!ticket) return
 
-    try {
-      await ticketsService.assignTicket(ticketId, assignedToId)
-      loadTicket()
-    } catch (err) {
-      const appError = logError(err, 'TicketDetailModal.handleAssignChange')
-      setError(appError.userMessage)
+    // Find the staff member info if assigning
+    let newAssignedUser: typeof ticket.assigned_user = undefined
+    if (userId && userId !== ticket.assigned_to) {
+      // Fetch user info for optimistic update
+      try {
+        const data = await ticketsService.getTicketById(ticketId!)
+        newAssignedUser = data.assigned_user
+      } catch {
+        // Fallback to just updating the ID
+      }
     }
+
+    // Optimistic update
+    setTicket({
+      ...ticket,
+      assigned_to: userId,
+      assigned_user: newAssignedUser,
+    })
   }
 
   if (!ticket) {
@@ -135,233 +148,263 @@ export function TicketDetailModal({
   }
 
   const canChangeStatus = userRole !== 'cidadao'
+  const statusConfig = ticket ? STATUS_CONFIG[ticket.status] : null
+
+  const handleImageNavigation = (direction: 'prev' | 'next') => {
+    if (!ticket?.fotos || ticket.fotos.length === 0) return
+
+    if (direction === 'prev') {
+      setCurrentImageIndex((prev) => (prev === 0 ? ticket.fotos.length - 1 : prev - 1))
+    } else {
+      setCurrentImageIndex((prev) => (prev === ticket.fotos.length - 1 ? 0 : prev + 1))
+    }
+  }
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-7xl max-h-[85vh] p-0 gap-0">
           {loading ? (
             <div className="py-12 text-center">Carregando...</div>
           ) : error ? (
-            <div className="py-12 text-center">
+            <div className="py-12 text-center px-6">
               <p className="text-destructive mb-4">{error}</p>
               <Button onClick={loadTicket}>Tentar novamente</Button>
             </div>
           ) : (
-            <>
-              <DialogHeader>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <DialogTitle className="text-2xl mb-2">{ticket.titulo}</DialogTitle>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline" className="font-mono">
-                        #{ticket.ticket_number}
-                      </Badge>
-                      <Badge variant={STATUS_VARIANTS[ticket.status]}>
-                        {TICKET_STATUS_LABELS[ticket.status]}
-                      </Badge>
-                      {ticket.categories && (
-                        <Badge
-                          variant="outline"
+            <div className="flex flex-col lg:flex-row min-h-[80vh] max-h-[85vh]">
+              {/* Main Content Area */}
+              <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+                {/* Header with ticket number and title */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-3">
+                    <Hash className="h-4 w-4" />
+                    <span className="font-mono text-sm font-medium">
+                      {ticket.ticket_number}
+                    </span>
+                  </div>
+                  <DialogHeader>
+                    <DialogTitle className="text-3xl font-bold leading-tight mb-6">
+                      {ticket.titulo}
+                    </DialogTitle>
+                  </DialogHeader>
+
+                  {/* Metadata Grid - 2 items per row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 pb-6 border-b">
+                    {/* Status */}
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-medium text-muted-foreground">Status</span>
+                      {canChangeStatus ? (
+                        <Select
+                          value={ticket.status}
+                          onValueChange={(value) => handleStatusChange(value as TicketStatus)}
+                        >
+                          <SelectTrigger className="w-full border-0 bg-muted/50 h-auto p-0 shadow-none">
+                            <SelectValue>
+                              <div className={`flex items-center gap-2 px-4 py-2.5 rounded-md border ${statusConfig?.color}`}>
+                                <div className={`w-2 h-2 rounded-full ${statusConfig?.dotColor}`} />
+                                <span className="font-medium text-sm">{statusConfig?.label}</span>
+                              </div>
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+                              <SelectItem key={key} value={key}>
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${config.dotColor}`} />
+                                  <span>{config.label}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-md border ${statusConfig?.color}`}>
+                          <div className={`w-2 h-2 rounded-full ${statusConfig?.dotColor}`} />
+                          <span className="font-medium text-sm">{statusConfig?.label}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Assigned User (Staff only) */}
+                    {canChangeStatus && user && tenantId && (
+                      <div className="flex flex-col gap-2">
+                        <span className="text-sm font-medium text-muted-foreground">Responsável</span>
+                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-md border bg-muted/50">
+                          <TicketAssignAvatar
+                            ticketId={ticket.id}
+                            assignedUser={ticket.assigned_user}
+                            tenantId={tenantId}
+                            currentUserId={user.id}
+                            canAssign={canChangeStatus}
+                            onAssignChange={handleAssignChange}
+                          />
+                          {ticket.assigned_user && (
+                            <span className="text-sm font-medium">
+                              {ticket.assigned_user.nome_completo}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Category */}
+                    {ticket.categories && (
+                      <div className="flex flex-col gap-2">
+                        <span className="text-sm font-medium text-muted-foreground">Categoria</span>
+                        <div
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium border w-fit"
                           style={{
                             borderColor: ticket.categories.cor,
                             color: ticket.categories.cor,
-                            backgroundColor: `${ticket.categories.cor}15`,
+                            backgroundColor: `${ticket.categories.cor}20`,
                           }}
                         >
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: ticket.categories.cor }}
+                          />
                           {ticket.categories.nome}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </DialogHeader>
+                        </div>
+                      </div>
+                    )}
 
-              <div className="space-y-6">
-                {/* Metadata Card */}
-                <Card className="p-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground mb-1">Criado por</p>
-                      <p className="font-medium">{ticket.profile?.nome_completo || 'N/A'}</p>
+                    {/* Creator */}
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-medium text-muted-foreground">Criado por</span>
+                      <div className="flex items-center gap-2 px-4 py-2.5 rounded-md border bg-muted/50">
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={ticket.profile?.avatar_url || undefined} />
+                          <AvatarFallback className="text-xs">
+                            {ticket.profile?.nome_completo?.charAt(0).toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">{ticket.profile?.nome_completo || 'Usuário'}</span>
+                          <span className="text-xs text-muted-foreground">{formatDateTime(ticket.created_at)}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground mb-1">Data de criação</p>
-                      <p className="font-medium">{formatDateTime(ticket.created_at)}</p>
-                    </div>
+
+                    {/* Location */}
                     {ticket.localizacao && typeof ticket.localizacao === 'object' && 'bairro' in ticket.localizacao && (
-                      <div className="sm:col-span-2">
-                        <p className="text-muted-foreground mb-1">Localização</p>
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-2">
+                        <span className="text-sm font-medium text-muted-foreground">Localização</span>
+                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-md border bg-muted/50">
                           <MapPin className="h-4 w-4 text-primary" />
-                          <p className="font-medium">{(ticket.localizacao as { bairro: string }).bairro}</p>
+                          <span className="text-sm font-medium">
+                            {(ticket.localizacao as { bairro: string }).bairro}
+                          </span>
                         </div>
                       </div>
                     )}
                   </div>
-                </Card>
-
-                {/* Description */}
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Descrição</h3>
-                  <Card className="p-4">
-                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{ticket.descricao}</p>
-                  </Card>
                 </div>
 
-                {/* Photos Gallery */}
+                {/* Description Section */}
+                <div className="mb-8">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    Descrição
+                  </h3>
+                  <div className="prose prose-sm max-w-none">
+                    <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+                      {ticket.descricao}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Photos Section */}
                 {ticket.fotos && ticket.fotos.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-                      Fotos ({ticket.fotos.length})
+                  <div className="mb-8">
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                      Anexos ({ticket.fotos.length})
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {ticket.fotos.map((photo, index) => (
-                        <div
+                        <button
                           key={index}
-                          className="relative aspect-square cursor-pointer overflow-hidden rounded-lg border-2 border-transparent hover:border-primary transition-all"
-                          onClick={() => setSelectedImage(photo)}
+                          className="relative aspect-video cursor-pointer overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all group"
+                          onClick={() => {
+                            setSelectedImage(photo)
+                            setCurrentImageIndex(index)
+                          }}
                         >
                           <img
                             src={photo}
                             alt={`Foto ${index + 1}`}
-                            className="h-full w-full object-cover hover:scale-105 transition-transform duration-300"
+                            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
-                        </div>
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                        </button>
                       ))}
                     </div>
                   </div>
                 )}
+              </div>
 
-                {/* Status Change and Assign (Staff only) */}
-                {canChangeStatus && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card className="p-4">
-                      <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-                        Alterar Status
-                      </h3>
-                      <select
-                        value={ticket.status}
-                        onChange={(e) =>
-                          handleStatusChange(e.target.value as TicketStatus)
-                        }
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                      >
-                        <option value="nova">Nova</option>
-                        <option value="em_analise">Em Análise</option>
-                        <option value="em_andamento">Em Andamento</option>
-                        <option value="resolvida">Resolvida</option>
-                        <option value="encerrada">Encerrada</option>
-                        <option value="cancelada">Cancelada</option>
-                      </select>
-                    </Card>
-
-                    <Card className="p-4">
-                      <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide flex items-center gap-2">
-                        <UserCheck className="h-4 w-4" />
-                        Responsável
-                      </h3>
-                      {loadingStaff ? (
-                        <p className="text-sm text-muted-foreground">Carregando...</p>
-                      ) : (
-                        <Select
-                          value={ticket.assigned_to || 'unassigned'}
-                          onValueChange={(value) =>
-                            handleAssignChange(value === 'unassigned' ? null : value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue>
-                              {ticket.assigned_user ? (
-                                <div className="flex items-center gap-2">
-                                  <Avatar className="h-5 w-5">
-                                    <AvatarImage src={ticket.assigned_user.avatar_url || undefined} />
-                                    <AvatarFallback className="text-xs">
-                                      {ticket.assigned_user.nome_completo?.charAt(0).toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <span>{ticket.assigned_user.nome_completo}</span>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">Não atribuído</span>
-                              )}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="unassigned">
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-muted-foreground" />
-                                <span>Não atribuído</span>
-                              </div>
-                            </SelectItem>
-                            {user && (
-                              <SelectItem value={user.id}>
-                                <div className="flex items-center gap-2">
-                                  <Avatar className="h-5 w-5">
-                                    <AvatarFallback className="text-xs">EU</AvatarFallback>
-                                  </Avatar>
-                                  <span>Atribuir para mim</span>
-                                </div>
-                              </SelectItem>
-                            )}
-                            {staffMembers
-                              .filter((member) => member.id !== user?.id)
-                              .map((member) => (
-                                <SelectItem key={member.id} value={member.id}>
-                                  <div className="flex items-center gap-2">
-                                    <Avatar className="h-5 w-5">
-                                      <AvatarImage src={member.avatar_url || undefined} />
-                                      <AvatarFallback className="text-xs">
-                                        {member.nome_completo?.charAt(0).toUpperCase()}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <span>{member.nome_completo}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </Card>
-                  </div>
-                )}
-
-                {/* Comments Section */}
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-4 uppercase tracking-wide">
-                    Comentários
-                  </h3>
+              {/* Sidebar - Comments/Activity */}
+              <div className="lg:w-96 lg:border-l bg-muted/30 p-6 flex flex-col min-h-0">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex-shrink-0">
+                  Atividade
+                </h3>
+                <div className="flex-1 min-h-0">
                   <TicketComments ticketId={ticket.id} userRole={userRole} />
                 </div>
               </div>
-
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={() => onOpenChange(false)}>
-                  Fechar
-                </Button>
-              </div>
-            </>
+            </div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Image Lightbox */}
-      {selectedImage && (
+      {/* Image Lightbox with Navigation */}
+      {selectedImage && ticket?.fotos && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95 backdrop-blur-sm"
           onClick={() => setSelectedImage(null)}
         >
           <button
-            className="absolute right-4 top-4 text-white text-2xl hover:text-gray-300"
+            className="absolute right-4 top-4 text-white/80 hover:text-white transition-colors z-10"
             onClick={() => setSelectedImage(null)}
           >
-            ✕
+            <X className="h-6 w-6" />
           </button>
-          <img
-            src={selectedImage}
-            alt="Visualização completa"
-            className="max-h-[90vh] max-w-[90vw] object-contain"
-          />
+
+          {ticket.fotos.length > 1 && (
+            <>
+              <button
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-black/50 hover:bg-black/70 rounded-full p-3 transition-all z-10"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleImageNavigation('prev')
+                }}
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <button
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-black/50 hover:bg-black/70 rounded-full p-3 transition-all z-10"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleImageNavigation('next')
+                }}
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            </>
+          )}
+
+          <div className="relative max-h-[90vh] max-w-[90vw]">
+            <img
+              src={ticket.fotos[currentImageIndex]}
+              alt={`Foto ${currentImageIndex + 1}`}
+              className="max-h-[90vh] max-w-[90vw] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+            {ticket.fotos.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm">
+                {currentImageIndex + 1} / {ticket.fotos.length}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </>

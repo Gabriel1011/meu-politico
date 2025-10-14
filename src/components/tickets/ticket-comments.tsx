@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatDateTime } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,8 @@ interface TicketCommentsProps {
 
 export function TicketComments({ ticketId, userRole }: TicketCommentsProps) {
   const { user } = useUserContext()
+  const commentsEndRef = useRef<HTMLDivElement>(null)
+  const commentsListRef = useRef<HTMLDivElement>(null)
 
   const [comments, setComments] = useState<TicketCommentWithAuthor[]>([])
   const [loading, setLoading] = useState(false)
@@ -24,6 +26,10 @@ export function TicketComments({ ticketId, userRole }: TicketCommentsProps) {
   const [error, setError] = useState<string | null>(null)
   const [newComment, setNewComment] = useState('')
   const [isPublic, setIsPublic] = useState(true)
+
+  const scrollToBottom = () => {
+    commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
 
   useEffect(() => {
     if (user && ticketId) {
@@ -76,25 +82,65 @@ export function TicketComments({ ticketId, userRole }: TicketCommentsProps) {
 
     if (!newComment.trim() || !user) return
 
+    // Optimistic update - add comment immediately
+    const optimisticComment: TicketCommentWithAuthor = {
+      id: `temp-${Date.now()}`,
+      ticket_id: ticketId,
+      autor_id: user.id,
+      mensagem: newComment.trim(),
+      publico: isPublic,
+      anexos: [],
+      metadata: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      profile: {
+        id: user.id,
+        nome_completo: user.user_metadata?.nome_completo || user.email || 'Você',
+        avatar_url: user.user_metadata?.avatar_url || null,
+        role: userRole,
+      },
+    }
+
+    setComments((prev) => [...prev, optimisticComment])
+    setNewComment('')
+    const previousIsPublic = isPublic
+    setIsPublic(true)
     setSubmitting(true)
     setError(null)
+
+    // Scroll to bottom after adding comment
+    setTimeout(scrollToBottom, 100)
 
     try {
       const supabase = createClient()
 
-      const { error: insertError } = await supabase.from('ticket_comments').insert({
-        ticket_id: ticketId,
-        autor_id: user.id,
-        mensagem: newComment.trim(),
-        publico: isPublic,
-      })
+      const { data, error: insertError } = await supabase
+        .from('ticket_comments')
+        .insert({
+          ticket_id: ticketId,
+          autor_id: user.id,
+          mensagem: optimisticComment.mensagem,
+          publico: previousIsPublic,
+        })
+        .select(`
+          *,
+          profile (id, nome_completo, avatar_url, role)
+        `)
+        .single()
 
       if (insertError) throw insertError
 
-      setNewComment('')
-      setIsPublic(true)
-      loadComments()
+      // Replace optimistic comment with real one
+      if (data) {
+        setComments((prev) =>
+          prev.map((c) => (c.id === optimisticComment.id ? (data as TicketCommentWithAuthor) : c))
+        )
+      }
     } catch (err) {
+      // Remove optimistic comment on error
+      setComments((prev) => prev.filter((c) => c.id !== optimisticComment.id))
+      setNewComment(optimisticComment.mensagem)
+      setIsPublic(previousIsPublic)
       const appError = logError(err, 'TicketComments.handleSubmit')
       setError(appError.userMessage)
     } finally {
@@ -105,108 +151,129 @@ export function TicketComments({ ticketId, userRole }: TicketCommentsProps) {
   const canAddPrivateComments = userRole !== 'cidadao'
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col h-full">
       {error && (
-        <div className="rounded-md bg-destructive/10 p-4">
+        <div className="rounded-md bg-destructive/10 p-4 mb-4">
           <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
 
-      {/* Comments List */}
-      {loading ? (
-        <div className="py-4 text-center text-sm text-gray-500">
-          Carregando comentários...
-        </div>
-      ) : comments.length === 0 ? (
-        <div className="rounded-lg bg-gray-50 p-8 text-center text-sm text-gray-500">
-          Nenhum comentário ainda. Seja o primeiro a comentar!
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {comments.map((comment) => {
-            const isBackoffice = comment.profile?.role && ['assessor', 'politico', 'admin'].includes(comment.profile.role)
-            const isPrivate = !comment.publico
+      {/* Comments List - Scrollable */}
+      <div ref={commentsListRef} className="flex-1 overflow-y-auto pr-2 mb-4 min-h-0">
+        {loading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            Carregando comentários...
+          </div>
+        ) : comments.length === 0 ? (
+          <div className="rounded-lg bg-muted/50 p-8 text-center text-sm text-muted-foreground">
+            Nenhum comentário ainda. Seja o primeiro a comentar!
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {comments.map((comment) => {
+              const isBackoffice = comment.profile?.role && ['assessor', 'politico', 'admin'].includes(comment.profile.role)
+              const isPrivate = !comment.publico
 
-            // Define background color based on role and privacy
-            let bgColor = 'bg-white border-gray-200'
-            if (isPrivate) {
-              bgColor = 'bg-yellow-50 border-yellow-200'
-            } else if (isBackoffice) {
-              bgColor = 'bg-blue-50 border-blue-200'
-            }
+              return (
+                <div key={comment.id} className="group">
+                  {/* Card wrapper */}
+                  <div className="rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-start gap-3">
+                      {/* Avatar */}
+                      <div className="flex-shrink-0">
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+                          {comment.profile?.nome_completo?.charAt(0).toUpperCase() || '?'}
+                        </div>
+                      </div>
 
-            return (
-              <div
-                key={comment.id}
-                className={`rounded-lg border p-4 ${bgColor}`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white font-medium">
-                    {comment.profile?.nome_completo?.charAt(0).toUpperCase() || '?'}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">
-                        {comment.profile?.nome_completo || 'Usuário'}
-                      </span>
-                      {isBackoffice && (
-                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
-                          Equipe
-                        </span>
-                      )}
-                      {isPrivate && (
-                        <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">
-                          Interno
-                        </span>
-                      )}
-                      <span className="text-xs text-gray-500">
-                        {formatDateTime(comment.created_at)}
-                      </span>
+                      {/* Comment Content */}
+                      <div className="flex-1 min-w-0">
+                        {/* Header with name and time */}
+                        <div className="flex items-baseline gap-2 flex-wrap mb-1">
+                          <span className="font-semibold text-sm text-foreground">
+                            {comment.profile?.nome_completo || 'Usuário'}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDateTime(comment.created_at)}
+                          </span>
+                        </div>
+
+                        {/* Badges Row */}
+                        {(isBackoffice || isPrivate) && (
+                          <div className="flex items-center gap-1.5 mb-2">
+                            {isBackoffice && (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                                <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                Equipe
+                              </span>
+                            )}
+                            {isPrivate && (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                </svg>
+                                Interno
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Comment Message */}
+                        <div className="relative">
+                          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">
+                            {comment.mensagem}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">
-                      {comment.mensagem}
-                    </p>
                   </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* New Comment Form */}
-      <form onSubmit={handleSubmit} className="space-y-3 border-t pt-4">
-        <div>
-          <Label htmlFor="comment">Adicionar comentário</Label>
-          <Textarea
-            id="comment"
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Escreva seu comentário..."
-            className="mt-1 min-h-[100px]"
-            disabled={submitting}
-          />
-        </div>
-
-        {canAddPrivateComments && (
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="isPublic"
-              checked={isPublic}
-              onChange={(e) => setIsPublic(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300"
-            />
-            <Label htmlFor="isPublic" className="text-sm font-normal">
-              Comentário público (visível para o cidadão)
-            </Label>
+              )
+            })}
+            {/* Scroll anchor */}
+            <div ref={commentsEndRef} />
           </div>
         )}
+      </div>
 
-        <Button type="submit" disabled={submitting || !newComment.trim()}>
-          {submitting ? 'Enviando...' : 'Enviar comentário'}
-        </Button>
-      </form>
+      {/* New Comment Form - Fixed at bottom */}
+      <div className="border-t pt-4 bg-background">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <Textarea
+              id="comment"
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Escreva seu comentário..."
+              className="min-h-[80px] resize-none"
+              disabled={submitting}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            {canAddPrivateComments && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isPublic"
+                  checked={isPublic}
+                  onChange={(e) => setIsPublic(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="isPublic" className="text-xs font-normal cursor-pointer">
+                  Público
+                </Label>
+              </div>
+            )}
+
+            <Button type="submit" disabled={submitting || !newComment.trim()} size="sm" className="ml-auto">
+              {submitting ? 'Enviando...' : 'Enviar'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }
