@@ -75,7 +75,7 @@ interface TicketKanbanProps {
 
 function KanbanSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
       {KANBAN_COLUMNS.map((column) => (
         <div key={column.id} className="space-y-4">
           <Card className={`${column.color} p-4 animate-pulse`}>
@@ -124,30 +124,30 @@ function DraggableTicketCard({ ticket, canChangeStatus, canAssign, tenantId, cur
     opacity: isDragging ? 0.5 : 1,
   }
 
+  const handleCardClick = () => {
+    // Don't open modal if we're dragging
+    if (isDragging) return
+    onClick()
+  }
+
   return (
     <Card
       ref={setNodeRef}
       style={style}
+      {...(canChangeStatus ? { ...attributes, ...listeners } : {})}
       className={`p-4 hover:shadow-md transition-shadow ${
         canChangeStatus ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
       }`}
-      onClick={onClick}
+      onClick={handleCardClick}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-start gap-2 flex-1 min-w-0">
-          {canChangeStatus && (
-            <div
-              {...attributes}
-              {...listeners}
-              className="cursor-grab active:cursor-grabbing mt-1 text-muted-foreground hover:text-foreground flex-shrink-0"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <GripVertical className="h-4 w-4" />
-            </div>
-          )}
           <h4 className="font-medium text-sm flex-1 min-w-0">{ticket.titulo}</h4>
         </div>
-        <div className="flex-shrink-0">
+        <div
+          className="flex-shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
           <TicketAssignAvatar
             ticketId={ticket.id}
             assignedUser={ticket.assigned_user}
@@ -212,7 +212,7 @@ function DroppableColumn({ column, tickets, canChangeStatus, canAssign, tenantId
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col space-y-3 min-h-[500px] md:min-h-[600px] rounded-xl p-3 transition-all flex-shrink-0 w-[85vw] sm:w-[70vw] md:w-auto snap-center ${
+      className={`flex flex-col space-y-3 h-full rounded-xl p-3 transition-all w-[85vw] sm:w-[70vw] md:w-full snap-center ${
         showHighlight ? 'bg-primary/5 ring-2 ring-primary' : 'bg-muted/30'
       }`}
     >
@@ -448,7 +448,7 @@ export function TicketKanban({ refreshToken }: TicketKanbanProps) {
         onDragEnd={handleDragEnd}
       >
         {/* Mobile: Horizontal scroll | Desktop: Grid layout */}
-        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto pb-4 md:overflow-x-visible snap-x snap-mandatory md:snap-none scrollbar-hide">
+        <div className="flex md:grid md:grid-cols-4 gap-4 h-full overflow-x-auto md:overflow-x-visible snap-x snap-mandatory md:snap-none scrollbar-hide">
           {KANBAN_COLUMNS.map((column) => {
             // Check if we're hovering over this column or any ticket in it
             const isHoveringColumn = overId === column.id

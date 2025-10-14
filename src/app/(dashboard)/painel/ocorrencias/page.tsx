@@ -14,12 +14,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useUserContext } from '@/hooks/use-user-context'
+import { useSidebar } from '@/hooks/use-sidebar'
+import { cn } from '@/lib/utils'
 
 export default function OcorrenciasPage() {
   const [view, setView] = useState<'list' | 'kanban'>('list')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [refreshToken, setRefreshToken] = useState(0)
   const { role } = useUserContext()
+  const sidebarCollapsed = useSidebar()
 
   const handleCreateSuccess = () => {
     setIsCreateOpen(false)
@@ -30,46 +33,95 @@ export default function OcorrenciasPage() {
 
   return (
     <>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-3xl font-bold">Ocorrências</h1>
-          <div className="flex flex-wrap items-center gap-2">
-            {role === 'cidadao' && (
-              <Button className="gap-2" onClick={openCreateDialog}>
-                <Plus className="h-4 w-4" />
-                Nova ocorrência
-              </Button>
-            )}
-            <div className="flex gap-2">
-              <Button
-                variant={view === 'list' ? 'default' : 'outline'}
-                onClick={() => setView('list')}
-                className="gap-2"
-              >
-                <List className="h-4 w-4" />
-                Lista
-              </Button>
-              <Button
-                variant={view === 'kanban' ? 'default' : 'outline'}
-                onClick={() => setView('kanban')}
-                className="gap-2"
-              >
-                <LayoutGrid className="h-4 w-4" />
-                Kanban
-              </Button>
+      {view === 'kanban' ? (
+        /* Kanban Mode - Full viewport layout */
+        <div
+          className={cn(
+            'fixed inset-0 z-10 bg-background transition-all duration-300',
+            'lg:left-64', // Default: expanded sidebar
+            sidebarCollapsed && 'lg:left-16' // Collapsed sidebar
+          )}
+          style={{ top: '64px' }}
+        >
+          <div className="flex flex-col h-full">
+            {/* Action Buttons */}
+            <div className="px-6 py-4 border-b flex items-center justify-between bg-background">
+              <h1 className="text-3xl font-bold">Ocorrências</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                {role === 'cidadao' && (
+                  <Button className="gap-2" onClick={openCreateDialog}>
+                    <Plus className="h-4 w-4" />
+                    Nova ocorrência
+                  </Button>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setView('list')}
+                    className="gap-2"
+                  >
+                    <List className="h-4 w-4" />
+                    Lista
+                  </Button>
+                  <Button
+                    variant="default"
+                    onClick={() => setView('kanban')}
+                    className="gap-2"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                    Kanban
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Kanban Content - Full height */}
+            <div className="flex-1 p-6 overflow-auto">
+              <div className="h-full">
+                <TicketKanban refreshToken={refreshToken} />
+              </div>
             </div>
           </div>
         </div>
+      ) : (
+        /* List Mode - Normal container layout */
+        <div className="space-y-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="text-3xl font-bold">Ocorrências</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              {role === 'cidadao' && (
+                <Button className="gap-2" onClick={openCreateDialog}>
+                  <Plus className="h-4 w-4" />
+                  Nova ocorrência
+                </Button>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  variant="default"
+                  onClick={() => setView('list')}
+                  className="gap-2"
+                >
+                  <List className="h-4 w-4" />
+                  Lista
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setView('kanban')}
+                  className="gap-2"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  Kanban
+                </Button>
+              </div>
+            </div>
+          </div>
 
-        {view === 'list' ? (
           <TicketList
             refreshToken={refreshToken}
             onCreateRequest={openCreateDialog}
           />
-        ) : (
-          <TicketKanban refreshToken={refreshToken} />
-        )}
-      </div>
+        </div>
+      )}
 
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="max-w-3xl w-full">
