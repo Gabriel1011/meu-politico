@@ -27,10 +27,10 @@ export default function LoginPage() {
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-xs font-bold text-white shadow-sm">
           MP
         </span>
-        <div className="flex flex-col items-start">
+        <span className="flex flex-col items-start">
           <span className="text-xs font-bold text-primary">Meu Político</span>
           <span className="text-[10px] text-muted-foreground">Governança municipal</span>
-        </div>
+        </span>
       </Link>
 
       {/* Centered login card */}

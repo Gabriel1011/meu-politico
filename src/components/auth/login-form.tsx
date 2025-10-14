@@ -22,23 +22,37 @@ export function LoginForm() {
     setLoading(true)
     setError(null)
 
+    console.log('🔐 [Login] Iniciando autenticação...')
+    console.log('📧 [Login] Email:', email)
+    console.log('🌍 [Login] NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+
     try {
       const supabase = createClient()
+      console.log('✅ [Login] Cliente Supabase criado')
 
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (signInError) throw signInError
+      console.log('📊 [Login] Resposta do Supabase:', { data, error: signInError })
 
+      if (signInError) {
+        console.error('❌ [Login] Erro do Supabase:', signInError)
+        throw signInError
+      }
+
+      console.log('✅ [Login] Autenticação bem-sucedida, redirecionando...')
       router.push('/painel')
       router.refresh()
     } catch (err) {
+      console.error('💥 [Login] Erro capturado:', err)
       const appError = logError(err, 'LoginForm.handleSubmit')
+      console.error('📝 [Login] Mensagem de erro processada:', appError.userMessage)
       setError(appError.userMessage)
     } finally {
       setLoading(false)
+      console.log('🏁 [Login] Processo finalizado')
     }
   }
 

@@ -92,13 +92,6 @@
   textarea {
     font-size: 16px;
   }
-
-  /* Smooth transitions for better UX */
-  * {
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 150ms;
-  }
 }
 
 @layer utilities {
