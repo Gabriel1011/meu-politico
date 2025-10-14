@@ -25,31 +25,35 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
+  const tenantId = userData?.tenant_id
+  const userRole = userData?.role
+  const userName = userData?.nome_completo
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">
-          Bem-vindo, {userData?.nome_completo || 'Usuário'}
+          Bem-vindo, {userName || 'Usuário'}
         </h1>
         <p className="text-muted-foreground">
-          {userData?.role === 'cidadao'
+          {userRole === 'cidadao'
             ? 'Acompanhe suas solicitações'
             : 'Gerencie as ocorrências do gabinete'}
         </p>
       </div>
 
-      {userData?.tenant_id && (
+      {tenantId && userRole && (
         <>
-          <DashboardStats tenantId={userData.tenant_id} role={userData.role} />
+          <DashboardStats tenantId={tenantId} role={userRole} />
           <RecentTickets
-            tenantId={userData.tenant_id}
+            tenantId={tenantId}
             userId={user.id}
-            role={userData.role}
+            role={userRole}
           />
         </>
       )}
 
-      {!userData?.tenant_id && userData?.role === 'cidadao' && (
+      {!tenantId && userRole === 'cidadao' && (
         <div className="rounded-lg bg-yellow-50 p-4">
           <p className="text-sm text-yellow-800">
             Você ainda não está vinculado a nenhum gabinete. Entre em contato

@@ -2,59 +2,61 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
-  // ============================================
-  // TENANT DETECTION
-  // ============================================
-  let tenantId: string | null = null
 
-  // Prioridade 1: Usar TENANT_ID do .env (desenvolvimento)
-  if (process.env.TENANT_ID) {
-    tenantId = process.env.TENANT_ID
-  } else {
-    // Prioridade 2: Detectar por subdomain (produção)
-    const hostname = request.headers.get('host') || ''
-    const subdomain = hostname.split('.')[0]
-
-    // Em produção, buscar tenant_id pelo subdomain
-    // (vamos implementar depois)
-  }
-
-  // ============================================
-  // SUPABASE SESSION
-  // ============================================
-  const supabaseResponse = NextResponse.next({
+  let supabaseResponse = NextResponse.next({
     request,
   })
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('Missing Supabase environment variables')
+    return supabaseResponse
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
-            supabaseResponse.cookies.set(name, value, options)
+          )
+          supabaseResponse = NextResponse.next({
+            request,
           })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
         },
       },
     }
   )
 
-  // IMPORTANT: Avoid writing any logic between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // ============================================
-  // INJETAR TENANT_ID NO COOKIE
-  // ============================================
+  let tenantId: string | null = null
+
+  // Prioridade 1: Usar TENANT_ID do .env (desenvolvimento)
+  const envTenantId = process.env.TENANT_ID
+  if (envTenantId) {
+    tenantId = envTenantId
+  } else {
+    // Prioridade 2: Detectar por subdomain (produção)
+    // const hostname = request.headers.get('host') || ''
+    // const subdomain = hostname.split('.')[0]
+
+    // Em produção, buscar tenant_id pelo subdomain
+    // TODO: Implementar lookup de tenant por subdomain
+  }
+
   if (tenantId) {
     // Injetar tenant_id no cookie para uso no client-side
     supabaseResponse.cookies.set('x-tenant-id', tenantId, {
@@ -63,9 +65,6 @@ export async function updateSession(request: NextRequest) {
     })
   }
 
-  // ============================================
-  // ROUTE PROTECTION
-  // ============================================
   // Protected routes - require authentication
   const protectedPaths = ['/painel', '/dashboard']
   const isProtectedPath = protectedPaths.some((path) =>

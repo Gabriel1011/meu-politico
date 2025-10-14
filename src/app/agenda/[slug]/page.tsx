@@ -1,7 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import { EventCalendar } from '@/components/agenda/event-calendar'
-import { EventDetailModal } from '@/components/agenda/event-detail-modal'
 import { AgendaClient } from './agenda-client'
 import { generateThemeVariables } from '@/lib/color-utils'
 
@@ -27,11 +25,16 @@ export default async function AgendaPublicaPage({ params }: PageProps) {
     notFound()
   }
 
+  const tenantId = tenant.id
+  const tenantCores = tenant.cores
+  const tenantLogo = tenant.logo_url
+  const tenantNome = tenant.nome_publico
+
   // Get published events for this tenant
   const { data: events, error: eventsError } = await supabase
     .from('events')
     .select('*')
-    .eq('tenant_id', tenant.id)
+    .eq('tenant_id', tenantId)
     .eq('published', true)
     .order('start_date', { ascending: false })
 
@@ -41,7 +44,7 @@ export default async function AgendaPublicaPage({ params }: PageProps) {
 
   // Generate theme variables
   const themeVars = generateThemeVariables(
-    tenant.cores as { primaria: string; secundaria: string }
+    tenantCores as { primaria: string; secundaria: string }
   )
 
   return (
@@ -50,19 +53,19 @@ export default async function AgendaPublicaPage({ params }: PageProps) {
         {/* Header */}
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center">
-            {tenant.logo_url ? (
+            {tenantLogo ? (
               <img
-                src={tenant.logo_url}
-                alt={tenant.nome_publico}
+                src={tenantLogo}
+                alt={tenantNome}
                 className="h-20 w-auto"
               />
             ) : (
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-                {tenant.nome_publico.charAt(0)}
+                {tenantNome.charAt(0)}
               </div>
             )}
           </div>
-          <h1 className="text-3xl font-bold">{tenant.nome_publico}</h1>
+          <h1 className="text-3xl font-bold">{tenantNome}</h1>
           <p className="mt-2 text-muted-foreground">Agenda Pública</p>
         </div>
 

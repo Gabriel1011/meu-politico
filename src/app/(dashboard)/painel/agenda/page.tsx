@@ -46,11 +46,13 @@ export default async function AgendaPage() {
     console.error('Error fetching events:', error)
   }
 
+  const tenantId = profile.tenant_id
+
   return (
     <div className="flex flex-col h-full">
       <AgendaManagementClient
         events={events || []}
-        tenantId={profile.tenant_id}
+        tenantId={tenantId}
         isStaff={isStaff}
         headerTitle="Agenda"
         headerDescription={

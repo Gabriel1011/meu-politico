@@ -49,6 +49,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
       profile: {
         Row: {
@@ -68,7 +69,7 @@ export interface Database {
           email: string
           nome_completo?: string | null
           avatar_url?: string | null
-          role: 'cidadao' | 'assessor' | 'politico' | 'admin'
+          role?: 'cidadao' | 'assessor' | 'politico' | 'admin'
           metadata?: Json
           created_at?: string
           updated_at?: string
@@ -84,6 +85,15 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "profile_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       categories: {
         Row: {
@@ -116,6 +126,15 @@ export interface Database {
           ativa?: boolean
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       tickets: {
         Row: {
@@ -141,7 +160,7 @@ export interface Database {
           id?: string
           tenant_id: string
           user_id: string
-          ticket_number: string
+          ticket_number?: string
           titulo: string
           descricao: string
           categoria_id?: string | null
@@ -175,6 +194,36 @@ export interface Database {
           resolved_at?: string | null
           closed_at?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       ticket_comments: {
         Row: {
@@ -210,6 +259,22 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_comments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_comments_autor_id_fkey"
+            columns: ["autor_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          }
+        ]
       },
       notifications: {
         Row: {
@@ -245,6 +310,22 @@ export interface Database {
           read_at?: string | null
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       events: {
         Row: {
@@ -286,9 +367,32 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      generate_ticket_number: {
+        Args: {
+          p_tenant_id: string
+        }
+        Returns: string
       }
     }
     Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
       [_ in never]: never
     }
   }

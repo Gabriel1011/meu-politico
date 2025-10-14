@@ -664,12 +664,12 @@ async function fetchTenantCitizens(
     // @ts-expect-error - RPC function may not be in generated types yet
     const rpcResult = await client.rpc('get_tenant_citizens', { p_tenant: tenantId })
 
-    if (!rpcResult.error) {
+    if (!rpcResult.error && Array.isArray(rpcResult.data)) {
       const citizens = (rpcResult.data ?? []) as CitizenRow[]
       return { data: citizens, error: null }
     }
 
-    if (rpcResult.error.code && rpcResult.error.code !== 'PGRST202') {
+    if (rpcResult.error && rpcResult.error.code && rpcResult.error.code !== 'PGRST202') {
       // Se não for erro de função não encontrada, retorna o erro
       return { data: [], error: rpcResult.error }
     }

@@ -34,6 +34,10 @@ export default async function NotificationsPage() {
     )
   }
 
+  const userId = profile.id
+  const tenantId = profile.tenant_id
+  const userRole = profile.role
+
   return (
     <div className="space-y-8">
       <header className="space-y-2">
@@ -44,9 +48,9 @@ export default async function NotificationsPage() {
         </p>
       </header>
 
-      <NotificationsView userId={profile.id} tenantId={profile.tenant_id} role={profile.role} />
+      <NotificationsView userId={userId} tenantId={tenantId} role={userRole} />
 
-      {!profile.tenant_id && (
+      {!tenantId && (
         <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
           Para visualizar notificações do gabinete, vincule-se a um tenant ativo.
         </div>
