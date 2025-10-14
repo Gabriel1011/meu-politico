@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { Loader2, Mail, AlertCircle, CheckCircle2, Send } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -70,22 +71,30 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
+    <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
       {status.kind === 'error' && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {status.message}
+        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm">
+          <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600" />
+          <p className="text-sm font-medium text-red-800">{status.message}</p>
         </div>
       )}
 
       {status.kind === 'success' && (
-        <div className="rounded-md border border-primary/40 bg-primary/10 p-4 text-sm text-primary">
-          {status.message}
+        <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+          <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600" />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-emerald-900">Link enviado com sucesso!</p>
+            <p className="text-sm text-emerald-700">{status.message}</p>
+          </div>
         </div>
       )}
 
-      <div className="space-y-4">
-        <div>
-          <Label htmlFor="email">E-mail cadastrado</Label>
+      <div className="space-y-2">
+        <Label htmlFor="email" className="text-sm font-semibold">
+          E-mail cadastrado
+        </Label>
+        <div className="relative">
+          <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
           <Input
             id="email"
             name="email"
@@ -95,13 +104,30 @@ export function ForgotPasswordForm() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="seu@email.com"
-            className="mt-1"
+            className="h-12 pl-11 text-base transition-all focus:ring-2 focus:ring-primary/20"
           />
         </div>
+        <p className="text-xs text-muted-foreground">
+          Enviaremos um link seguro para este endereço de e-mail.
+        </p>
       </div>
 
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? 'Enviando link...' : 'Receber link de redefinição'}
+      <Button
+        type="submit"
+        className="h-12 w-full text-base font-semibold shadow-lg shadow-amber-500/25 transition-all hover:shadow-xl hover:shadow-amber-500/30"
+        disabled={loading}
+      >
+        {loading ? (
+          <span className="flex items-center justify-center gap-2">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Enviando link...
+          </span>
+        ) : (
+          <span className="flex items-center justify-center gap-2">
+            <Send className="h-4 w-4" />
+            Receber link de redefinição
+          </span>
+        )}
       </Button>
     </form>
   )

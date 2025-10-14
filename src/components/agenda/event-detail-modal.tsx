@@ -47,6 +47,7 @@ export function EventDetailModal({
                   src={event.banner_url}
                   alt={event.title}
                   fill
+                  sizes="(max-width: 1200px) 100vw, 1200px"
                   className="object-cover"
                   priority
                 />

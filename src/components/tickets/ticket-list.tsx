@@ -176,7 +176,7 @@ export function TicketList({ refreshToken, onCreateRequest }: TicketListProps) {
     cancelada: 'destructive',
   }
 
-  const canAssign = ['assessor', 'vereador', 'admin'].includes(role)
+  const canAssign = ['assessor', 'politico', 'admin'].includes(role)
 
   return (
     <div className="space-y-6">

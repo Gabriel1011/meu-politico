@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import Link from 'next/link'
+import { Loader2, Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react'
 import { logError } from '@/lib/error-handler'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -43,62 +44,81 @@ export function LoginForm() {
 
   return (
     <div className="mt-8 space-y-6">
-      <form className="space-y-6" onSubmit={handleSubmit}>
+      <form className="space-y-5" onSubmit={handleSubmit}>
         {error && (
-          <div className="rounded-md bg-red-50 p-4">
-            <p className="text-sm text-red-800">{error}</p>
+          <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm">
+            <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600" />
+            <p className="text-sm font-medium text-red-800">{error}</p>
           </div>
         )}
 
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="email">E-mail</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu@email.com"
-              className="mt-1"
-            />
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-sm font-semibold">
+              E-mail
+            </Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com"
+                className="h-12 pl-11 text-base transition-all focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
           </div>
 
-          <div>
-            <Label htmlFor="password">Senha</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="mt-1"
-            />
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-sm font-semibold">
+              Senha
+            </Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="h-12 pl-11 text-base transition-all focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
           </div>
         </div>
 
         <div className="flex items-center justify-end text-sm">
           <a
             href="/recuperar-senha"
-            className="font-medium text-primary hover:text-primary/90"
+            className="group inline-flex items-center gap-1 font-semibold text-primary transition-all hover:gap-2 hover:text-primary/90"
           >
             Esqueceu sua senha?
+            <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
           </a>
         </div>
 
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button
+          type="submit"
+          className="h-12 w-full text-base font-semibold shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30"
+          disabled={loading}
+        >
           {loading ? (
             <span className="flex items-center justify-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-5 w-5 animate-spin" />
               Entrando...
             </span>
           ) : (
-            'Entrar'
+            <span className="flex items-center justify-center gap-2">
+              Entrar
+              <ArrowRight className="h-4 w-4" />
+            </span>
           )}
         </Button>
       </form>

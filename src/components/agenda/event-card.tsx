@@ -34,6 +34,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
             src={event.banner_url}
             alt={event.title}
             fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover transition-transform group-hover:scale-105"
           />
           <div className="absolute top-3 right-3">

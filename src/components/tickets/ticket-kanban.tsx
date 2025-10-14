@@ -430,8 +430,13 @@ export function TicketKanban({ refreshToken }: TicketKanbanProps) {
     )
   }
 
+  // Safety check - if user is null (e.g., during logout), don't render
+  if (!user || !tenantId) {
+    return null
+  }
+
   const canChangeStatus = role !== 'cidadao'
-  const canAssign = ['assessor', 'vereador', 'admin'].includes(role)
+  const canAssign = ['assessor', 'politico', 'admin'].includes(role)
 
   return (
     <>
@@ -457,8 +462,8 @@ export function TicketKanban({ refreshToken }: TicketKanbanProps) {
                 tickets={ticketsByStatus[column.id] || []}
                 canChangeStatus={canChangeStatus}
                 canAssign={canAssign}
-                tenantId={tenantId!}
-                currentUserId={user!.id}
+                tenantId={tenantId}
+                currentUserId={user.id}
                 isOverColumn={isOverColumn}
                 onTicketClick={(ticketId) => {
                   setSelectedTicketId(ticketId)
