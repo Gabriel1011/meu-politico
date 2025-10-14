@@ -178,7 +178,11 @@ useEffect(() => {
         setError('Não foi possível carregar as notificações.')
         setNotifications([])
       } else {
-        setNotifications((data as Notification[]) ?? [])
+        const notificationsData = (data || []).map(item => ({
+          ...item,
+          destinatario: Array.isArray(item.destinatario) ? item.destinatario[0] : item.destinatario
+        }))
+        setNotifications(notificationsData as Notification[])
         setError(null)
       }
 
@@ -655,17 +659,25 @@ async function fetchTenantCitizens(
   tenantId: string
 ): Promise<{ data: CitizenRow[]; error: PostgrestError | null }>
 {
-  const rpcResult = await client.rpc('get_tenant_citizens', { p_tenant: tenantId })
+  // Tenta usar a função RPC se existir, senão usa query direta
+  try {
+    // @ts-expect-error - RPC function may not be in generated types yet
+    const rpcResult = await client.rpc('get_tenant_citizens', { p_tenant: tenantId })
 
-  if (!rpcResult.error) {
-    const citizens = (rpcResult.data ?? []) as CitizenRow[]
-    return { data: citizens, error: null }
+    if (!rpcResult.error) {
+      const citizens = (rpcResult.data ?? []) as CitizenRow[]
+      return { data: citizens, error: null }
+    }
+
+    if (rpcResult.error.code && rpcResult.error.code !== 'PGRST202') {
+      // Se não for erro de função não encontrada, retorna o erro
+      return { data: [], error: rpcResult.error }
+    }
+  } catch {
+    // Ignora erro e usa fallback
   }
 
-  if (rpcResult.error.code && rpcResult.error.code !== 'PGRST202') {
-    return { data: [], error: rpcResult.error }
-  }
-
+  // Fallback: usa query direta
   const selectResult = await client
     .from('profile')
     .select('id, tenant_id, nome_completo')

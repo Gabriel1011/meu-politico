@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
-import { handleSupabaseError } from '@/lib/error-handler'
+import { handleSupabaseError, handleStorageError } from '@/lib/error-handler'
 import type { TicketWithRelations, TicketStatus } from '@/types'
 
 /**
@@ -316,20 +316,32 @@ class TicketsService {
       baseQuery = baseQuery.eq('user_id', userId)
     }
 
+    // Build open query
+    let openQuery = this.supabase
+      .from('tickets')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
+      .in('status', ['nova', 'em_analise', 'em_andamento'])
+
+    if (userId) {
+      openQuery = openQuery.eq('user_id', userId)
+    }
+
+    // Build resolved query
+    let resolvedQuery = this.supabase
+      .from('tickets')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
+      .eq('status', 'resolvida')
+
+    if (userId) {
+      resolvedQuery = resolvedQuery.eq('user_id', userId)
+    }
+
     const [totalResult, openResult, resolvedResult] = await Promise.all([
       baseQuery,
-      this.supabase
-        .from('tickets')
-        .select('*', { count: 'exact', head: true })
-        .eq('tenant_id', tenantId)
-        .in('status', ['nova', 'em_analise', 'em_andamento'])
-        .then((res) => (userId ? res.eq('user_id', userId) : res)),
-      this.supabase
-        .from('tickets')
-        .select('*', { count: 'exact', head: true })
-        .eq('tenant_id', tenantId)
-        .eq('status', 'resolvida')
-        .then((res) => (userId ? res.eq('user_id', userId) : res)),
+      openQuery,
+      resolvedQuery,
     ])
 
     return {
@@ -354,7 +366,7 @@ class TicketsService {
       .from('uploads')
       .upload(filePath, file)
 
-    if (uploadError) throw handleSupabaseError(uploadError)
+    if (uploadError) throw handleStorageError(uploadError)
 
     const {
       data: { publicUrl },

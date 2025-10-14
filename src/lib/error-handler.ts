@@ -1,4 +1,5 @@
 import type { PostgrestError } from '@supabase/supabase-js'
+import type { StorageError } from '@supabase/storage-js'
 
 /**
  * Classe base para erros da aplicação
@@ -68,6 +69,38 @@ export class NotFoundError extends AppError {
     )
     this.name = 'NotFoundError'
   }
+}
+
+/**
+ * Mapeia erros de Storage do Supabase para mensagens amigáveis
+ *
+ * @param error - Erro retornado pelo Supabase Storage
+ * @returns AppError com mensagem amigável
+ */
+export function handleStorageError(error: StorageError): AppError {
+  // Erro de arquivo muito grande
+  if (error.message.includes('payload too large') || error.message.includes('file size')) {
+    return new ValidationError(
+      error.message,
+      'Arquivo muito grande. O tamanho máximo permitido é 5MB.'
+    )
+  }
+
+  // Erro de tipo de arquivo não permitido
+  if (error.message.includes('invalid file type')) {
+    return new ValidationError(
+      error.message,
+      'Tipo de arquivo não permitido. Use apenas imagens (JPG, PNG).'
+    )
+  }
+
+  // Erro genérico de storage
+  return new AppError(
+    error.message,
+    'Erro ao fazer upload do arquivo. Tente novamente.',
+    'STORAGE_ERROR',
+    500
+  )
 }
 
 /**

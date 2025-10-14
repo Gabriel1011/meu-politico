@@ -79,7 +79,7 @@ export interface Database {
           email?: string
           nome_completo?: string | null
           avatar_url?: string | null
-          role?: 'cidadao' | 'assessor' | 'vereador' | 'admin'
+          role?: 'cidadao' | 'assessor' | 'politico' | 'admin'
           metadata?: Json
           created_at?: string
           updated_at?: string

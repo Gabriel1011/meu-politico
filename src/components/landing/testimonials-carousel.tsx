@@ -168,7 +168,7 @@ export function TestimonialsCarousel() {
 
             {/* Testimonial text */}
             <blockquote className="text-xl font-medium leading-relaxed text-foreground sm:text-2xl">
-              "{currentTestimonial.text}"
+              &ldquo;{currentTestimonial.text}&rdquo;
             </blockquote>
 
             {/* Highlight badge with icon */}
