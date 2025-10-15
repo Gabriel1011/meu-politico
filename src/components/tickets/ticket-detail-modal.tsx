@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { MapPin, Hash, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { TicketComments } from './ticket-comments'
 import { TicketAssignAvatar } from './ticket-assign-avatar'
@@ -172,22 +173,213 @@ export function TicketDetailModal({
               <Button onClick={loadTicket}>Tentar novamente</Button>
             </div>
           ) : (
-            <div className="flex flex-col lg:flex-row min-h-[80vh] max-h-[85vh]">
-              {/* Main Content Area */}
-              <div className="flex-1 overflow-y-auto p-6 lg:p-8">
-                {/* Header with ticket number and title */}
-                <div className="mb-6">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-3">
-                    <Hash className="h-4 w-4" />
-                    <span className="font-mono text-sm font-medium">
-                      {ticket.ticket_number}
-                    </span>
+            <>
+              {/* Mobile Layout - Tabs */}
+              <div className="lg:hidden">
+                <Tabs defaultValue="details" className="flex flex-col min-h-[80vh] max-h-[85vh]">
+                  <div className="border-b px-6 pt-6 pb-0">
+                    {/* Header with ticket number and title */}
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                        <Hash className="h-4 w-4" />
+                        <span className="font-mono text-sm font-medium">
+                          {ticket.ticket_number}
+                        </span>
+                      </div>
+                      <DialogHeader>
+                        <DialogTitle className="text-2xl font-bold leading-tight mb-4">
+                          {ticket.titulo}
+                        </DialogTitle>
+                      </DialogHeader>
+                    </div>
+
+                    {/* Tabs Navigation */}
+                    <TabsList className="w-full grid grid-cols-2">
+                      <TabsTrigger value="details">Detalhes</TabsTrigger>
+                      <TabsTrigger value="comments">Comentários</TabsTrigger>
+                    </TabsList>
                   </div>
-                  <DialogHeader>
-                    <DialogTitle className="text-3xl font-bold leading-tight mb-6">
-                      {ticket.titulo}
-                    </DialogTitle>
-                  </DialogHeader>
+
+                  {/* Details Tab */}
+                  <TabsContent value="details" className="flex-1 overflow-y-auto p-6 mt-0">
+                    {/* Metadata Grid - 2 items per row */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 pb-6 border-b">
+                      {/* Status */}
+                      <div className="flex flex-col gap-2">
+                        <span className="text-sm font-medium text-muted-foreground">Status</span>
+                        {canChangeStatus ? (
+                          <Select
+                            value={ticket.status}
+                            onValueChange={(value) => handleStatusChange(value as TicketStatus)}
+                          >
+                            <SelectTrigger className="w-full border-0 bg-muted/50 h-auto p-0 shadow-none">
+                              <SelectValue>
+                                <div className={`flex items-center gap-2 px-4 py-2.5 rounded-md border ${statusConfig?.color}`}>
+                                  <div className={`w-2 h-2 rounded-full ${statusConfig?.dotColor}`} />
+                                  <span className="font-medium text-sm">{statusConfig?.label}</span>
+                                </div>
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+                                <SelectItem key={key} value={key}>
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${config.dotColor}`} />
+                                    <span>{config.label}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <div className={`flex items-center gap-2 px-4 py-2.5 rounded-md border ${statusConfig?.color}`}>
+                            <div className={`w-2 h-2 rounded-full ${statusConfig?.dotColor}`} />
+                            <span className="font-medium text-sm">{statusConfig?.label}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Assigned User (Staff only) */}
+                      {canChangeStatus && user && tenantId && (
+                        <div className="flex flex-col gap-2">
+                          <span className="text-sm font-medium text-muted-foreground">Responsável</span>
+                          <div className="flex items-center gap-2 px-4 py-2.5 rounded-md border bg-muted/50">
+                            <TicketAssignAvatar
+                              ticketId={ticket.id}
+                              assignedUser={ticket.assigned_user}
+                              tenantId={tenantId}
+                              currentUserId={user.id}
+                              canAssign={canChangeStatus}
+                              onAssignChange={handleAssignChange}
+                            />
+                            {ticket.assigned_user && (
+                              <span className="text-sm font-medium">
+                                {ticket.assigned_user.nome_completo}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Category */}
+                      {ticket.categories && (
+                        <div className="flex flex-col gap-2">
+                          <span className="text-sm font-medium text-muted-foreground">Categoria</span>
+                          <div
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium border w-fit"
+                            style={{
+                              borderColor: ticket.categories.cor,
+                              color: ticket.categories.cor,
+                              backgroundColor: `${ticket.categories.cor}20`,
+                            }}
+                          >
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: ticket.categories.cor }}
+                            />
+                            {ticket.categories.nome}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Creator */}
+                      <div className="flex flex-col gap-2">
+                        <span className="text-sm font-medium text-muted-foreground">Criado por</span>
+                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-md border bg-muted/50">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={ticket.profile?.avatar_url || undefined} />
+                            <AvatarFallback className="text-xs">
+                              {ticket.profile?.nome_completo?.charAt(0).toUpperCase() || 'U'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">{ticket.profile?.nome_completo || 'Usuário'}</span>
+                            <span className="text-xs text-muted-foreground">{formatDateTime(ticket.created_at)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Location */}
+                      {ticket.localizacao && typeof ticket.localizacao === 'object' && 'bairro' in ticket.localizacao && (
+                        <div className="flex flex-col gap-2">
+                          <span className="text-sm font-medium text-muted-foreground">Localização</span>
+                          <div className="flex items-center gap-2 px-4 py-2.5 rounded-md border bg-muted/50">
+                            <MapPin className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-medium">
+                              {(ticket.localizacao as { bairro: string }).bairro}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Description Section */}
+                    <div className="mb-8">
+                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                        Descrição
+                      </h3>
+                      <div className="prose prose-sm max-w-none">
+                        <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+                          {ticket.descricao}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Photos Section */}
+                    {ticket.fotos && ticket.fotos.length > 0 && (
+                      <div className="mb-8">
+                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                          Anexos ({ticket.fotos.length})
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {ticket.fotos.map((photo, index) => (
+                            <button
+                              key={index}
+                              className="relative aspect-video cursor-pointer overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all group"
+                              onClick={() => {
+                                setSelectedImage(photo)
+                                setCurrentImageIndex(index)
+                              }}
+                            >
+                              <img
+                                src={photo}
+                                alt={`Foto ${index + 1}`}
+                                className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  {/* Comments Tab */}
+                  <TabsContent value="comments" className="flex-1 overflow-y-auto p-6 mt-0">
+                    <div className="h-full flex flex-col">
+                      <TicketComments ticketId={ticket.id} userRole={userRole} />
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </div>
+
+              {/* Desktop Layout - Sidebar */}
+              <div className="hidden lg:flex flex-col lg:flex-row min-h-[80vh] max-h-[85vh]">
+                {/* Main Content Area */}
+                <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+                  {/* Header with ticket number and title */}
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-3">
+                      <Hash className="h-4 w-4" />
+                      <span className="font-mono text-sm font-medium">
+                        {ticket.ticket_number}
+                      </span>
+                    </div>
+                    <DialogHeader>
+                      <DialogTitle className="text-3xl font-bold leading-tight mb-6">
+                        {ticket.titulo}
+                      </DialogTitle>
+                    </DialogHeader>
 
                   {/* Metadata Grid - 2 items per row */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 pb-6 border-b">
@@ -342,16 +534,17 @@ export function TicketDetailModal({
                 )}
               </div>
 
-              {/* Sidebar - Comments/Activity */}
-              <div className="lg:w-96 lg:border-l bg-muted/30 p-6 flex flex-col min-h-0">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex-shrink-0">
-                  Atividade
-                </h3>
-                <div className="flex-1 min-h-0">
-                  <TicketComments ticketId={ticket.id} userRole={userRole} />
+                {/* Sidebar - Comments/Activity */}
+                <div className="lg:w-96 lg:border-l bg-muted/30 p-6 flex flex-col min-h-0">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex-shrink-0">
+                    Atividade
+                  </h3>
+                  <div className="flex-1 min-h-0">
+                    <TicketComments ticketId={ticket.id} userRole={userRole} />
+                  </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
