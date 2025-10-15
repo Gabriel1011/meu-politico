@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useCallback, memo } from 'react'
 import type { TicketWithRelations, TicketStatus } from '@/types'
 import { TicketDetailModal } from './ticket-detail-modal'
 import { TicketAssignAvatar } from './ticket-assign-avatar'
@@ -16,7 +16,7 @@ import {
   useSensor,
   useSensors,
   useDroppable,
-  rectIntersection,
+  closestCenter,
 } from '@dnd-kit/core'
 import { SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -105,7 +105,7 @@ interface DraggableTicketCardProps {
   onAssignChange: () => void
 }
 
-function DraggableTicketCard({ ticket, canChangeStatus, canAssign, tenantId, currentUserId, onClick, onAssignChange }: DraggableTicketCardProps) {
+const DraggableTicketCard = memo(function DraggableTicketCard({ ticket, canChangeStatus, canAssign, tenantId, currentUserId, onClick, onAssignChange }: DraggableTicketCardProps) {
   const {
     attributes,
     listeners,
@@ -118,17 +118,27 @@ function DraggableTicketCard({ ticket, canChangeStatus, canAssign, tenantId, cur
     disabled: !canChangeStatus,
   })
 
-  const style = {
+  const style = useMemo(() => ({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-  }
+  }), [transform, transition, isDragging])
 
-  const handleCardClick = () => {
+  const handleCardClick = useCallback(() => {
     // Don't open modal if we're dragging
     if (isDragging) return
     onClick()
-  }
+  }, [isDragging, onClick])
+
+  const handleAvatarClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+  }, [])
+
+  const badgeStyle = useMemo(() => ticket.categories ? {
+    borderColor: ticket.categories.cor,
+    color: ticket.categories.cor,
+    backgroundColor: `${ticket.categories.cor}15`,
+  } : undefined, [ticket.categories])
 
   return (
     <Card
@@ -146,7 +156,7 @@ function DraggableTicketCard({ ticket, canChangeStatus, canAssign, tenantId, cur
         </div>
         <div
           className="flex-shrink-0"
-          onClick={(e) => e.stopPropagation()}
+          onClick={handleAvatarClick}
         >
           <TicketAssignAvatar
             ticketId={ticket.id}
@@ -169,11 +179,7 @@ function DraggableTicketCard({ ticket, canChangeStatus, canAssign, tenantId, cur
           <Badge
             variant="outline"
             className="text-xs"
-            style={{
-              borderColor: ticket.categories.cor,
-              color: ticket.categories.cor,
-              backgroundColor: `${ticket.categories.cor}15`,
-            }}
+            style={badgeStyle}
           >
             {ticket.categories.nome}
           </Badge>
@@ -181,7 +187,7 @@ function DraggableTicketCard({ ticket, canChangeStatus, canAssign, tenantId, cur
       </div>
     </Card>
   )
-}
+})
 
 interface DroppableColumnProps {
   column: {
@@ -202,22 +208,24 @@ interface DroppableColumnProps {
   isOverColumn: boolean
 }
 
-function DroppableColumn({ column, tickets, canChangeStatus, canAssign, tenantId, currentUserId, onTicketClick, onAssignChange, isOverColumn }: DroppableColumnProps) {
+const DroppableColumn = memo(function DroppableColumn({ column, tickets, canChangeStatus, canAssign, tenantId, currentUserId, onTicketClick, onAssignChange, isOverColumn }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   })
 
   const showHighlight = isOver || isOverColumn
 
+  const ticketIds = useMemo(() => tickets.map((t) => t.id), [tickets])
+
   return (
     <div
-      ref={setNodeRef}
-      className={`flex flex-col space-y-3 h-full rounded-xl p-3 transition-all w-[85vw] sm:w-[70vw] md:w-full snap-center ${
+      className={`flex flex-col space-y-3 rounded-xl p-3 transition-all w-[85vw] sm:w-[70vw] md:w-full snap-center ${
         showHighlight ? 'bg-primary/5 ring-2 ring-primary' : 'bg-muted/30'
       }`}
+      style={{ height: 'calc(100vh - 180px)' }}
     >
       {/* Column Header */}
-      <div className={`flex items-center justify-between p-3 rounded-lg border-l-4 ${column.borderColor} bg-card shadow-sm`}>
+      <div className={`flex items-center justify-between p-3 rounded-lg border-l-4 ${column.borderColor} bg-card shadow-sm flex-shrink-0`}>
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${column.bgColor}`} />
           <h3 className={`font-semibold text-sm ${column.textColor}`}>
@@ -229,32 +237,41 @@ function DroppableColumn({ column, tickets, canChangeStatus, canAssign, tenantId
         </div>
       </div>
 
-      {/* Tickets List */}
-      <SortableContext items={tickets.map((t) => t.id)}>
-        <div className="space-y-3 flex-1">
-          {tickets.map((ticket) => (
-            <DraggableTicketCard
-              key={ticket.id}
-              ticket={ticket}
-              canChangeStatus={canChangeStatus}
-              canAssign={canAssign}
-              tenantId={tenantId}
-              currentUserId={currentUserId}
-              onClick={() => onTicketClick(ticket.id)}
-              onAssignChange={onAssignChange}
-            />
-          ))}
+      {/* Tickets List with Scroll */}
+      <div
+        ref={setNodeRef}
+        className="flex-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent hover:scrollbar-thumb-muted-foreground/40"
+        style={{
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(128, 128, 128, 0.2) transparent'
+        }}
+      >
+        <SortableContext items={ticketIds}>
+          <div className="space-y-3">
+            {tickets.map((ticket) => (
+              <DraggableTicketCard
+                key={ticket.id}
+                ticket={ticket}
+                canChangeStatus={canChangeStatus}
+                canAssign={canAssign}
+                tenantId={tenantId}
+                currentUserId={currentUserId}
+                onClick={() => onTicketClick(ticket.id)}
+                onAssignChange={onAssignChange}
+              />
+            ))}
 
-          {tickets.length === 0 && (
-            <div className={`rounded-lg border-2 border-dashed ${column.borderColor} p-6 text-center`}>
-              <p className="text-sm text-muted-foreground">Nenhuma ocorrência</p>
-            </div>
-          )}
-        </div>
-      </SortableContext>
+            {tickets.length === 0 && (
+              <div className={`rounded-lg border-2 border-dashed ${column.borderColor} p-6 text-center`}>
+                <p className="text-sm text-muted-foreground">Nenhuma ocorrência</p>
+              </div>
+            )}
+          </div>
+        </SortableContext>
+      </div>
     </div>
   )
-}
+})
 
 export function TicketKanban({ refreshToken }: TicketKanbanProps) {
   const { user, tenantId, role, loading: authLoading } = useUserContext()
@@ -275,17 +292,12 @@ export function TicketKanban({ refreshToken }: TicketKanbanProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 10, // 10px movement required to start drag (better for mobile)
+        distance: 8, // 8px movement required to start drag (optimized for performance)
       },
     })
   )
 
-  useEffect(() => {
-    if (tenantId && user) loadTickets()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId, user?.id, refreshToken])
-
-  const loadTickets = async () => {
+  const loadTickets = useCallback(async () => {
     if (!tenantId || !user) return
 
     setLoading(true)
@@ -314,20 +326,32 @@ export function TicketKanban({ refreshToken }: TicketKanbanProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantId, user, role])
 
-  const handleDragStart = (event: DragStartEvent) => {
+  useEffect(() => {
+    if (tenantId && user) loadTickets()
+  }, [tenantId, user?.id, refreshToken, loadTickets])
+
+  const findTicketById = useCallback((id: string): TicketWithRelations | null => {
+    for (const status of Object.keys(ticketsByStatus) as TicketStatus[]) {
+      const ticket = ticketsByStatus[status]?.find((t) => t.id === id)
+      if (ticket) return ticket
+    }
+    return null
+  }, [ticketsByStatus])
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
     const { active } = event
     const ticket = findTicketById(active.id as string)
     setActiveTicket(ticket)
-  }
+  }, [findTicketById])
 
-  const handleDragOver = (event: DragOverEvent) => {
+  const handleDragOver = useCallback((event: DragOverEvent) => {
     const { over } = event
     setOverId(over?.id as string | null)
-  }
+  }, [])
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event
     setActiveTicket(null)
     setOverId(null)
@@ -402,15 +426,7 @@ export function TicketKanban({ refreshToken }: TicketKanbanProps) {
       // Revert optimistic update on error
       loadTickets()
     }
-  }
-
-  const findTicketById = (id: string): TicketWithRelations | null => {
-    for (const status of Object.keys(ticketsByStatus) as TicketStatus[]) {
-      const ticket = ticketsByStatus[status]?.find((t) => t.id === id)
-      if (ticket) return ticket
-    }
-    return null
-  }
+  }, [ticketsByStatus, findTicketById, loadTickets])
 
   if (authLoading || loading) {
     return <KanbanSkeleton />
@@ -442,7 +458,7 @@ export function TicketKanban({ refreshToken }: TicketKanbanProps) {
     <>
       <DndContext
         sensors={sensors}
-        collisionDetection={rectIntersection}
+        collisionDetection={closestCenter}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}

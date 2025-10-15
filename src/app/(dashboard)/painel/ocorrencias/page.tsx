@@ -76,7 +76,7 @@ export default function OcorrenciasPage() {
             </div>
 
             {/* Kanban Content - Full height */}
-            <div className="flex-1 p-6 overflow-auto">
+            <div className="flex-1 p-6 overflow-hidden">
               <div className="h-full">
                 <TicketKanban refreshToken={refreshToken} />
               </div>
