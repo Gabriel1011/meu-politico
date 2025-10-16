@@ -1,8 +1,10 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AgendaManagementClient } from './agenda-management-client'
+import { EventsSkeleton } from '@/components/ui/skeletons'
 
-export default async function AgendaPage() {
+async function AgendaContent() {
   const supabase = await createClient()
 
   // Check auth
@@ -17,7 +19,7 @@ export default async function AgendaPage() {
   // Get user profile and check role
   const { data: profile } = await supabase
     .from('profile')
-    .select('*, tenants(*)')
+    .select('tenant_id, role')
     .eq('id', user.id)
     .single()
 
@@ -49,18 +51,26 @@ export default async function AgendaPage() {
   const tenantId = profile.tenant_id
 
   return (
+    <AgendaManagementClient
+      events={events || []}
+      tenantId={tenantId}
+      isStaff={isStaff}
+      headerTitle="Agenda"
+      headerDescription={
+        isStaff
+          ? 'Gerencie os eventos da sua agenda pública'
+          : 'Acompanhe os eventos da agenda'
+      }
+    />
+  )
+}
+
+export default function AgendaPage() {
+  return (
     <div className="flex flex-col h-full">
-      <AgendaManagementClient
-        events={events || []}
-        tenantId={tenantId}
-        isStaff={isStaff}
-        headerTitle="Agenda"
-        headerDescription={
-          isStaff
-            ? 'Gerencie os eventos da sua agenda pública'
-            : 'Acompanhe os eventos da agenda'
-        }
-      />
+      <Suspense fallback={<EventsSkeleton />}>
+        <AgendaContent />
+      </Suspense>
     </div>
   )
 }

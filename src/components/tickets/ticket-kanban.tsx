@@ -359,17 +359,20 @@ export function TicketKanban({ refreshToken }: TicketKanbanProps) {
     if (!over) return
 
     const ticketId = active.id as string
-    let targetStatus = over.id as string
+    const overId = over.id as string
+    let targetStatus = overId
+    let targetTicketId: string | null = null
 
     // Check if we dropped over a ticket (sortable item)
     // If so, find which column that ticket belongs to
     const validStatuses: TicketStatus[] = ['nova', 'em_analise', 'em_andamento', 'resolvida']
 
     if (!validStatuses.includes(targetStatus as TicketStatus)) {
-      // We dropped over a ticket, not a column - find the column
+      // We dropped over a ticket, not a column - find the column and save the ticket position
       for (const status of validStatuses) {
         const column = ticketsByStatus[status]
         if (column?.some((t) => t.id === targetStatus)) {
+          targetTicketId = targetStatus
           targetStatus = status
           break
         }
@@ -408,10 +411,28 @@ export function TicketKanban({ refreshToken }: TicketKanbanProps) {
       }
 
       // Add to new column
+      const updatedTicket = { ...ticket, status: newStatus }
+
       if (updated[newStatus]) {
-        updated[newStatus] = [...updated[newStatus]!, { ...ticket, status: newStatus }]
+        const targetColumn = [...updated[newStatus]!]
+
+        // If we dropped over a specific ticket, insert at that position
+        if (targetTicketId) {
+          const targetIndex = targetColumn.findIndex((t) => t.id === targetTicketId)
+          if (targetIndex !== -1) {
+            targetColumn.splice(targetIndex, 0, updatedTicket)
+          } else {
+            // Target ticket not found, add at the beginning
+            targetColumn.unshift(updatedTicket)
+          }
+        } else {
+          // Dropped over the column itself, add at the beginning
+          targetColumn.unshift(updatedTicket)
+        }
+
+        updated[newStatus] = targetColumn
       } else {
-        updated[newStatus] = [{ ...ticket, status: newStatus }]
+        updated[newStatus] = [updatedTicket]
       }
 
       return updated

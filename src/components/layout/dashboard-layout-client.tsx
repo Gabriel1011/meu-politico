@@ -3,7 +3,6 @@
 import { DashboardSidebar } from './dashboard-sidebar'
 import { cn } from '@/lib/utils'
 import { useSidebar } from '@/hooks/use-sidebar'
-import { PageTransition } from '@/components/ui/page-transition'
 
 interface DashboardLayoutClientProps {
   children: React.ReactNode
@@ -18,7 +17,6 @@ export function DashboardLayoutClient({
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      <PageTransition />
       <DashboardSidebar userRole={userRole} />
       <main
         className={cn(

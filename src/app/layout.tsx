@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { AlertProvider } from '@/hooks/use-alert'
 import { Toaster } from 'sonner'
-import { PageTransition } from '@/components/ui/page-transition'
 import './globals.css'
 
 const inter = Inter({
@@ -64,7 +63,6 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <PageTransition />
         {children}
         <AlertProvider />
         <Toaster position="top-right" richColors />
