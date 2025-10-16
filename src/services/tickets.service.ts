@@ -29,11 +29,19 @@ export interface TicketQueryOptions {
 /**
  * Dados para criar um ticket
  */
+export interface TicketLocationData {
+  cep?: string
+  logradouro?: string
+  bairro?: string
+  cidade?: string
+  estado?: string
+}
+
 export interface CreateTicketData {
   titulo: string
   descricao: string
   categoria_id?: string
-  localizacao?: { bairro?: string }
+  localizacao?: TicketLocationData
   fotos?: string[]
 }
 
@@ -203,17 +211,35 @@ class TicketsService {
 
     if (rpcError) throw handleSupabaseError(rpcError)
 
+    const payload: CreateTicketData = {
+      titulo: ticketData.titulo,
+      descricao: ticketData.descricao,
+      categoria_id: ticketData.categoria_id || undefined,
+      localizacao: ticketData.localizacao
+        ? (Object.entries(ticketData.localizacao).reduce((acc, [key, value]) => {
+            if (value) {
+              acc[key as keyof TicketLocationData] = value
+            }
+            return acc
+          }, {} as TicketLocationData))
+        : undefined,
+      fotos: ticketData.fotos || [],
+    }
+
     const { data, error } = await this.supabase
       .from('tickets')
       .insert({
         tenant_id: tenantId,
         user_id: userId,
         ticket_number: ticketNumber,
-        titulo: ticketData.titulo,
-        descricao: ticketData.descricao,
-        categoria_id: ticketData.categoria_id || null,
-        localizacao: ticketData.localizacao || null,
-        fotos: ticketData.fotos || [],
+        titulo: payload.titulo,
+        descricao: payload.descricao,
+        categoria_id: payload.categoria_id || null,
+        localizacao:
+          payload.localizacao && Object.keys(payload.localizacao).length > 0
+            ? payload.localizacao
+            : null,
+        fotos: payload.fotos || [],
       })
       .select()
       .single()
@@ -272,9 +298,26 @@ class TicketsService {
    * })
    */
   async updateTicket(id: string, updates: Partial<CreateTicketData>) {
+    const payload = { ...updates }
+
+    if (payload.localizacao) {
+      const sanitized = Object.entries(payload.localizacao).reduce(
+        (acc, [key, value]) => {
+          if (value) {
+            acc[key as keyof TicketLocationData] = value
+          }
+          return acc
+        },
+        {} as TicketLocationData
+      )
+
+      payload.localizacao =
+        Object.keys(sanitized).length > 0 ? sanitized : undefined
+    }
+
     const { data, error } = await this.supabase
       .from('tickets')
-      .update(updates)
+      .update(payload)
       .eq('id', id)
       .select()
       .single()

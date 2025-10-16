@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,9 +9,17 @@ import { Textarea } from '@/components/ui/textarea'
 import { useUserContext } from '@/hooks/use-user-context'
 import { ticketsService } from '@/services/tickets.service'
 import { logError } from '@/lib/error-handler'
-import { STORAGE_PATHS, UPLOAD } from '@/lib/constants'
+import { UPLOAD } from '@/lib/constants'
 import type { Category } from '@/types'
 import { createClient } from '@/lib/supabase/client'
+
+const normalizeCep = (value: string) => value.replace(/\D/g, '').slice(0, 8)
+
+const formatCep = (value: string) => {
+  const digits = normalizeCep(value)
+  if (digits.length <= 5) return digits
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`
+}
 
 function FormSkeleton() {
   return (
@@ -42,7 +50,14 @@ export function TicketForm({ onSuccess }: TicketFormProps = {}) {
     descricao: '',
     categoria_id: '',
     bairro: '',
+    cep: '',
+    logradouro: '',
+    cidade: '',
+    estado: '',
   })
+  const [isFetchingCep, setIsFetchingCep] = useState(false)
+  const [cepError, setCepError] = useState<string | null>(null)
+  const [lastSearchedCep, setLastSearchedCep] = useState('')
 
   useEffect(() => {
     if (tenantId) loadCategories()
@@ -69,6 +84,53 @@ export function TicketForm({ onSuccess }: TicketFormProps = {}) {
       setError(appError.userMessage)
     }
   }
+
+  const fetchAddressByCep = useCallback(async (cepDigits: string) => {
+    if (cepDigits.length !== 8) return
+
+    setIsFetchingCep(true)
+    setCepError(null)
+
+    try {
+      const response = await fetch(`/api/cep?cep=${cepDigits}`)
+      const data = await response.json()
+
+      if (!response.ok) {
+        setCepError(
+          (data && typeof data.error === 'string'
+            ? data.error
+            : 'Não foi possível buscar o CEP.') || null
+        )
+        setLastSearchedCep('')
+        return
+      }
+
+      setLastSearchedCep(cepDigits)
+
+      setFormData((prev) => ({
+        ...prev,
+        cep: data?.cep ? formatCep(data.cep) : prev.cep,
+        bairro: data?.bairro || prev.bairro,
+        logradouro: data?.logradouro || prev.logradouro,
+        cidade: data?.cidade || prev.cidade,
+        estado: data?.estado || prev.estado,
+      }))
+    } catch (err) {
+      const appError = logError(err, 'TicketForm.fetchAddressByCep')
+      setCepError(appError.userMessage || 'Não foi possível buscar o CEP.')
+      setLastSearchedCep('')
+    } finally {
+      setIsFetchingCep(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const digits = normalizeCep(formData.cep)
+
+    if (digits.length === 8 && digits !== lastSearchedCep && !isFetchingCep) {
+      fetchAddressByCep(digits)
+    }
+  }, [fetchAddressByCep, formData.cep, isFetchingCep, lastSearchedCep])
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -122,7 +184,25 @@ export function TicketForm({ onSuccess }: TicketFormProps = {}) {
         titulo: formData.titulo,
         descricao: formData.descricao,
         categoria_id: formData.categoria_id || undefined,
-        localizacao: formData.bairro ? { bairro: formData.bairro } : undefined,
+        localizacao: (() => {
+          const locationEntries = Object.entries({
+            cep: formData.cep || undefined,
+            logradouro: formData.logradouro || undefined,
+            bairro: formData.bairro || undefined,
+            cidade: formData.cidade || undefined,
+            estado: formData.estado || undefined,
+          }).filter(([, value]) => Boolean(value))
+
+          if (locationEntries.length === 0) return undefined
+
+          return Object.fromEntries(locationEntries) as {
+            cep?: string
+            logradouro?: string
+            bairro?: string
+            cidade?: string
+            estado?: string
+          }
+        })(),
         fotos: uploadedImages,
       })
 
@@ -167,7 +247,9 @@ export function TicketForm({ onSuccess }: TicketFormProps = {}) {
           id="titulo"
           required
           value={formData.titulo}
-          onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, titulo: e.target.value }))
+          }
           placeholder="Ex: Buraco na rua principal"
           className="mt-1"
           disabled={loading}
@@ -181,7 +263,7 @@ export function TicketForm({ onSuccess }: TicketFormProps = {}) {
           required
           value={formData.descricao}
           onChange={(e) =>
-            setFormData({ ...formData, descricao: e.target.value })
+            setFormData((prev) => ({ ...prev, descricao: e.target.value }))
           }
           placeholder="Descreva o problema em detalhes..."
           className="mt-1"
@@ -196,7 +278,10 @@ export function TicketForm({ onSuccess }: TicketFormProps = {}) {
           id="categoria_id"
           value={formData.categoria_id}
           onChange={(e) =>
-            setFormData({ ...formData, categoria_id: e.target.value })
+            setFormData((prev) => ({
+              ...prev,
+              categoria_id: e.target.value,
+            }))
           }
           className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={loading}
@@ -211,15 +296,113 @@ export function TicketForm({ onSuccess }: TicketFormProps = {}) {
       </div>
 
       <div>
-        <Label htmlFor="bairro">Bairro</Label>
+        <Label htmlFor="cep">CEP</Label>
         <Input
-          id="bairro"
-          value={formData.bairro}
-          onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
-          placeholder="Ex: Centro"
+          id="cep"
+          value={formData.cep}
+          onChange={(e) => {
+            const formatted = formatCep(e.target.value)
+            const digits = normalizeCep(e.target.value)
+            setFormData((prev) => ({ ...prev, cep: formatted }))
+            if (digits.length < 8 && lastSearchedCep) {
+              setLastSearchedCep('')
+            }
+            if (cepError) setCepError(null)
+          }}
+          onBlur={() => {
+            const digits = normalizeCep(formData.cep)
+            if (digits.length === 8 && digits !== lastSearchedCep && !isFetchingCep) {
+              void fetchAddressByCep(digits)
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              const digits = normalizeCep(formData.cep)
+              if (digits.length === 8 && digits !== lastSearchedCep && !isFetchingCep) {
+                void fetchAddressByCep(digits)
+              }
+            }
+          }}
+          placeholder="Digite o CEP"
+          inputMode="numeric"
           className="mt-1"
-          disabled={loading}
+          disabled={loading || isFetchingCep}
         />
+        {cepError ? (
+          <p className="mt-1 text-xs text-destructive">{cepError}</p>
+        ) : (
+          <p className="mt-1 text-xs text-muted-foreground">
+            {isFetchingCep
+              ? 'Buscando endereço...'
+              : 'Informe o CEP para preencher automaticamente o endereço.'}
+          </p>
+        )}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="logradouro">Logradouro</Label>
+          <Input
+            id="logradouro"
+            value={formData.logradouro}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                logradouro: e.target.value,
+              }))
+            }
+            placeholder="Ex: Rua das Flores"
+            className="mt-1"
+            disabled={loading}
+          />
+        </div>
+        <div>
+          <Label htmlFor="bairro">Bairro</Label>
+          <Input
+            id="bairro"
+            value={formData.bairro}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, bairro: e.target.value }))
+            }
+            placeholder="Ex: Centro"
+            className="mt-1"
+            disabled={loading}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="cidade">Cidade</Label>
+          <Input
+            id="cidade"
+            value={formData.cidade}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, cidade: e.target.value }))
+            }
+            placeholder="Ex: São Paulo"
+            className="mt-1"
+            disabled={loading}
+          />
+        </div>
+        <div>
+          <Label htmlFor="estado">Estado</Label>
+          <Input
+            id="estado"
+            value={formData.estado}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                estado: e.target.value.toUpperCase(),
+              }))
+            }
+            placeholder="Ex: SP"
+            className="mt-1 uppercase"
+            maxLength={2}
+            disabled={loading}
+          />
+        </div>
       </div>
 
       <div>

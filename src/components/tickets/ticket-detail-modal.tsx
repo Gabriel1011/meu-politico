@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { formatDateTime } from '@/lib/utils'
+import { formatTicketLocation } from '@/lib/location'
 import {
   Dialog,
   DialogContent,
@@ -150,6 +151,7 @@ export function TicketDetailModal({
 
   const canChangeStatus = userRole !== 'cidadao'
   const statusConfig = ticket ? STATUS_CONFIG[ticket.status] : null
+  const locationLabel = formatTicketLocation(ticket.localizacao)
 
   const handleImageNavigation = (direction: 'prev' | 'next') => {
     if (!ticket?.fotos || ticket.fotos.length === 0) return
@@ -300,13 +302,13 @@ export function TicketDetailModal({
                       </div>
 
                       {/* Location */}
-                      {ticket.localizacao && typeof ticket.localizacao === 'object' && 'bairro' in ticket.localizacao && (
+                      {locationLabel && (
                         <div className="flex flex-col gap-2">
                           <span className="text-sm font-medium text-muted-foreground">Localização</span>
                           <div className="flex items-center gap-2 px-4 py-2.5 rounded-md border bg-muted/50">
                             <MapPin className="h-4 w-4 text-primary" />
                             <span className="text-sm font-medium">
-                              {(ticket.localizacao as { bairro: string }).bairro}
+                              {locationLabel}
                             </span>
                           </div>
                         </div>
@@ -479,13 +481,13 @@ export function TicketDetailModal({
                     </div>
 
                     {/* Location */}
-                    {ticket.localizacao && typeof ticket.localizacao === 'object' && 'bairro' in ticket.localizacao && (
+                    {locationLabel && (
                       <div className="flex flex-col gap-2">
                         <span className="text-sm font-medium text-muted-foreground">Localização</span>
                         <div className="flex items-center gap-2 px-4 py-2.5 rounded-md border bg-muted/50">
                           <MapPin className="h-4 w-4 text-primary" />
                           <span className="text-sm font-medium">
-                            {(ticket.localizacao as { bairro: string }).bairro}
+                            {locationLabel}
                           </span>
                         </div>
                       </div>
