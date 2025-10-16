@@ -30,6 +30,7 @@ export interface TicketQueryOptions {
  * Dados para criar um ticket
  */
 export interface TicketLocationData {
+  [key: string]: string | undefined
   cep?: string
   logradouro?: string
   bairro?: string
