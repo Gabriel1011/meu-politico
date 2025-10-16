@@ -16,6 +16,7 @@
 
 import { useEffect, useState } from 'react'
 import { formatDateTime } from '@/lib/utils'
+import { formatTicketLocation } from '@/lib/location'
 import Link from 'next/link'
 import type { TicketWithRelations, TicketStatus } from '@/types'
 import { TICKET_STATUS_LABELS } from '@/types'
@@ -181,62 +182,63 @@ export function TicketListRefactored() {
 
       {/* Lista de tickets */}
       <div className="grid gap-4">
-        {tickets.map((ticket) => (
-          <Card
-            key={ticket.id}
-            className="p-6 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => {
-              setSelectedTicketId(ticket.id)
-              setIsModalOpen(true)
-            }}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-lg font-semibold">{ticket.titulo}</h3>
-                  <span className="text-sm text-muted-foreground">
-                    #{ticket.ticket_number}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-                  {ticket.descricao}
-                </p>
-                <div className="mt-4 flex items-center gap-2 flex-wrap">
-                  {ticket.categories && (
-                    <Badge
-                      variant="outline"
-                      className="text-xs"
-                      style={{
-                        borderColor: ticket.categories.cor,
-                        color: ticket.categories.cor,
-                        backgroundColor: `${ticket.categories.cor}15`,
-                      }}
-                    >
-                      {ticket.categories.nome}
-                    </Badge>
-                  )}
-                  <span className="text-xs text-muted-foreground">
-                    📅 {formatDateTime(ticket.created_at)}
-                  </span>
-                  {ticket.localizacao &&
-                    typeof ticket.localizacao === 'object' &&
-                    'bairro' in ticket.localizacao && (
+        {tickets.map((ticket) => {
+          const locationLabel = formatTicketLocation(ticket.localizacao)
+
+          return (
+            <Card
+              key={ticket.id}
+              className="p-6 hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => {
+                setSelectedTicketId(ticket.id)
+                setIsModalOpen(true)
+              }}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-lg font-semibold">{ticket.titulo}</h3>
+                    <span className="text-sm text-muted-foreground">
+                      #{ticket.ticket_number}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
+                    {ticket.descricao}
+                  </p>
+                  <div className="mt-4 flex items-center gap-2 flex-wrap">
+                    {ticket.categories && (
+                      <Badge
+                        variant="outline"
+                        className="text-xs"
+                        style={{
+                          borderColor: ticket.categories.cor,
+                          color: ticket.categories.cor,
+                          backgroundColor: `${ticket.categories.cor}15`,
+                        }}
+                      >
+                        {ticket.categories.nome}
+                      </Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      📅 {formatDateTime(ticket.created_at)}
+                    </span>
+                    {locationLabel && (
                       <span className="text-xs text-muted-foreground">
-                        📍{' '}
-                        {(ticket.localizacao as { bairro: string }).bairro}
+                        📍 {locationLabel}
                       </span>
                     )}
+                  </div>
                 </div>
+                <Badge
+                  variant={statusVariants[ticket.status]}
+                  className="shrink-0"
+                >
+                  {TICKET_STATUS_LABELS[ticket.status]}
+                </Badge>
               </div>
-              <Badge
-                variant={statusVariants[ticket.status]}
-                className="shrink-0"
-              >
-                {TICKET_STATUS_LABELS[ticket.status]}
-              </Badge>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          )
+        })}
       </div>
 
       {/* Modal de detalhes */}
