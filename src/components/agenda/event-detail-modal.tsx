@@ -4,13 +4,15 @@ import type { Database } from '@/types/database.types'
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Calendar, Clock, MapPin, Eye, EyeOff, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import Image from 'next/image'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 
 type Event = Database['public']['Tables']['events']['Row']
 
@@ -37,19 +39,27 @@ export function EventDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0 gap-0">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0 gap-0" showClose={false}>
+        <VisuallyHidden>
+          <DialogTitle>{event.title}</DialogTitle>
+          <DialogDescription>
+            Detalhes do evento {event.title}
+          </DialogDescription>
+        </VisuallyHidden>
         <div className="flex flex-col h-full max-h-[90vh]">
           {/* Hero Section with Banner */}
           <div className="relative flex-shrink-0">
             {event.banner_url ? (
               <div className="relative h-64 w-full overflow-hidden">
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={event.banner_url}
                   alt={event.title}
-                  fill
-                  sizes="(max-width: 1200px) 100vw, 1200px"
-                  className="object-cover"
-                  priority
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Hide image on error and show gradient background
+                    e.currentTarget.style.display = 'none'
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
 

@@ -92,12 +92,26 @@ export function AgendaManagementClient({
     }
   }
 
-  const handleFormSuccess = () => {
+  const handleFormSuccess = async () => {
     setFormModalOpen(false)
     setEditingEvent(null)
+
+    // Reload events from server
+    try {
+      const { data: updatedEvents } = await supabase
+        .from('events')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('start_date', { ascending: true })
+
+      if (updatedEvents) {
+        setEvents(updatedEvents)
+      }
+    } catch (error) {
+      console.error('Error reloading events:', error)
+    }
+
     router.refresh()
-    // Reload events
-    window.location.reload()
   }
 
   const handleSelectSlot = (slotInfo: { start: Date; end: Date }) => {

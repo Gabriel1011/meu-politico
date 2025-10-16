@@ -208,6 +208,7 @@ export function DashboardSidebar({ userRole }: DashboardSidebarProps) {
                   key={item.href}
                   href={item.href}
                   onClick={handleLinkClick}
+                  prefetch={true}
                   className={cn(
                     'flex items-center rounded-lg text-sm font-medium transition-all',
                     'active:scale-95 touch-manipulation',

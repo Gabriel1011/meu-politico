@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { generateThemeVariables, type TenantColors } from '@/lib/color-utils'
 
 interface ThemeProviderProps {
@@ -9,11 +9,16 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ cores, children }: ThemeProviderProps) {
+  // Memoize variables generation to avoid recalculation
+  const variables = useMemo(() => {
+    if (!cores) return null
+    return generateThemeVariables(cores)
+  }, [cores])
+
   useEffect(() => {
-    if (!cores) return
+    if (!variables) return
 
     // Aplica as variáveis CSS customizadas do tenant
-    const variables = generateThemeVariables(cores)
     const root = document.documentElement
 
     Object.entries(variables).forEach(([key, value]) => {
@@ -26,7 +31,7 @@ export function ThemeProvider({ cores, children }: ThemeProviderProps) {
         root.style.removeProperty(key)
       })
     }
-  }, [cores])
+  }, [variables])
 
   return <>{children}</>
 }

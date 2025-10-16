@@ -6,7 +6,6 @@ import { ptBR } from 'date-fns/locale'
 import { Calendar, Clock, MapPin, Eye, EyeOff } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import Image from 'next/image'
 
 type Event = Database['public']['Tables']['events']['Row']
 
@@ -30,12 +29,15 @@ export function EventCard({ event, onClick }: EventCardProps) {
       {/* Banner Image */}
       {event.banner_url && (
         <div className="relative aspect-[16/9] w-full overflow-hidden bg-gray-100">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={event.banner_url}
             alt={event.title}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover transition-transform group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+            onError={(e) => {
+              // Hide image on error
+              e.currentTarget.style.display = 'none'
+            }}
           />
           <div className="absolute top-3 right-3">
             <Badge
