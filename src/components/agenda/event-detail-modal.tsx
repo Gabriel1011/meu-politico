@@ -9,10 +9,11 @@ import {
 } from '@/components/ui/dialog'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Calendar, Clock, MapPin, Eye, EyeOff, X } from 'lucide-react'
+import { Calendar, Clock, MapPin, X, Share2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import { toast } from 'sonner'
 
 type Event = Database['public']['Tables']['events']['Row']
 
@@ -21,6 +22,7 @@ interface EventDetailModalProps {
   isOpen: boolean
   onClose: () => void
   actions?: React.ReactNode
+  slug?: string
 }
 
 export function EventDetailModal({
@@ -28,203 +30,215 @@ export function EventDetailModal({
   isOpen,
   onClose,
   actions,
+  slug,
 }: EventDetailModalProps) {
   if (!event) return null
 
   const startDate = new Date(event.start_date)
   const endDate = new Date(event.end_date)
 
-  const isSameDay =
-    format(startDate, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd')
+  const isUpcoming = startDate > new Date()
+  const isPast = endDate < new Date()
+  const isHappening = !isUpcoming && !isPast
+
+  const handleShare = async () => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
+    const agendaUrl = slug ? `${baseUrl}/agenda/${slug}` : baseUrl
+
+    // Build the share text carefully
+    const eventTitle = event.title || 'Evento'
+    const eventLocation = event.location || 'Local a definir'
+    const eventDate = format(startDate, "d 'de' MMMM 'de' yyyy", { locale: ptBR })
+    const eventStartTime = format(startDate, 'HH:mm', { locale: ptBR })
+    const eventEndTime = format(endDate, 'HH:mm', { locale: ptBR })
+    const eventDescription = event.description || ''
+
+    const shareText = [
+      `📅 ${eventTitle}`,
+      '',
+      `📍 ${eventLocation}`,
+      `🗓️ ${eventDate}`,
+      `🕐 ${eventStartTime} - ${eventEndTime}`,
+      '',
+      eventDescription,
+      '',
+      `🔗 Ver agenda completa: ${agendaUrl}`
+    ].join('\n')
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          text: shareText,
+        })
+        toast.success('Evento compartilhado com sucesso!')
+      } else {
+        await navigator.clipboard.writeText(shareText)
+        toast.success('Informações copiadas para a área de transferência!')
+      }
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') {
+        try {
+          await navigator.clipboard.writeText(shareText)
+          toast.success('Informações copiadas para a área de transferência!')
+        } catch {
+          toast.error('Não foi possível compartilhar o evento')
+        }
+      }
+    }
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0 gap-0" showClose={false}>
+      <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden p-0 gap-0" showClose={false}>
         <VisuallyHidden>
           <DialogTitle>{event.title}</DialogTitle>
           <DialogDescription>
             Detalhes do evento {event.title}
           </DialogDescription>
         </VisuallyHidden>
-        <div className="flex flex-col h-full max-h-[90vh]">
-          {/* Hero Section with Banner */}
-          <div className="relative flex-shrink-0">
+
+        <div className="flex flex-col lg:flex-row h-full max-h-[95vh] relative">
+          {/* Close button - Fixed at top right of modal */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="absolute top-4 right-4 z-50 h-9 w-9 rounded-full bg-background/80 hover:bg-background backdrop-blur-md shadow-lg border"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+
+          {/* Left Side - Image/Banner */}
+          <div className="relative lg:w-2/5 flex-shrink-0">
             {event.banner_url ? (
-              <div className="relative h-64 w-full overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+              <div className="relative h-64 lg:h-full w-full overflow-hidden">
                 <img
                   src={event.banner_url}
                   alt={event.title}
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    // Hide image on error and show gradient background
-                    e.currentTarget.style.display = 'none'
-                  }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
-
-                {/* Close button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onClose}
-                  className="absolute top-4 right-4 h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-
-                {/* Status badge */}
-                <div className="absolute top-4 left-4">
-                  <Badge
-                    variant={event.published ? 'default' : 'secondary'}
-                    className="shadow-lg backdrop-blur-sm"
-                  >
-                    {event.published ? (
-                      <>
-                        <Eye className="mr-1.5 h-3 w-3" />
-                        Público
-                      </>
-                    ) : (
-                      <>
-                        <EyeOff className="mr-1.5 h-3 w-3" />
-                        Rascunho
-                      </>
-                    )}
-                  </Badge>
-                </div>
               </div>
             ) : (
-              /* Header without banner */
-              <div className="relative h-32 bg-gradient-to-br from-primary via-primary/90 to-primary/80">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent)]" />
-
-                {/* Close button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onClose}
-                  className="absolute top-4 right-4 h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 text-white"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-
-                {/* Status badge */}
-                <div className="absolute top-4 left-6">
-                  <Badge
-                    variant={event.published ? 'default' : 'secondary'}
-                    className="shadow-lg backdrop-blur-sm bg-white/90 text-foreground"
-                  >
-                    {event.published ? (
-                      <>
-                        <Eye className="mr-1.5 h-3 w-3" />
-                        Público
-                      </>
-                    ) : (
-                      <>
-                        <EyeOff className="mr-1.5 h-3 w-3" />
-                        Rascunho
-                      </>
-                    )}
-                  </Badge>
+              <div className="relative h-64 lg:h-full bg-gradient-to-br from-primary via-primary/90 to-primary/70">
+                <div className="absolute inset-0 opacity-10">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8),transparent_50%)]" />
+                  <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNnoiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9nPjwvc3ZnPg==')]" />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Calendar className="h-24 w-24 text-white/20" />
                 </div>
               </div>
             )}
           </div>
 
-          {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="px-6 py-6 space-y-6">
+          {/* Right Side - Content */}
+          <div className="flex-1 overflow-y-auto lg:w-3/5">
+            <div className="p-6 lg:p-8 space-y-6">
+              {/* Status Badge */}
+              <div className="flex items-center gap-2">
+                {isHappening && (
+                  <Badge variant="destructive" className="animate-pulse">
+                    Acontecendo agora
+                  </Badge>
+                )}
+                {isUpcoming && <Badge variant="default">Em breve</Badge>}
+                {isPast && <Badge variant="outline">Evento realizado</Badge>}
+              </div>
+
               {/* Title */}
               <div>
-                <h1 className="text-3xl font-bold text-foreground leading-tight mb-2">
+                <h1 className="text-3xl lg:text-4xl font-bold text-foreground leading-tight">
                   {event.title}
                 </h1>
               </div>
 
-              {/* Info Cards - Modern grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Date Card */}
-                <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 p-4 border border-blue-200/50 dark:border-blue-800/50">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg bg-blue-500/10 backdrop-blur-sm">
-                      <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              {/* Date & Time Section */}
+              <div className="flex flex-col sm:flex-row gap-4 p-5 rounded-2xl bg-muted/50 border">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="flex-shrink-0 mt-1">
+                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Calendar className="h-6 w-6 text-primary" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">
-                        Data
-                      </p>
-                      <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 leading-tight">
-                        {isSameDay ? (
-                          format(startDate, "d 'de' MMMM", { locale: ptBR })
-                        ) : (
-                          <>
-                            {format(startDate, "d 'de' MMM", { locale: ptBR })} até{' '}
-                            {format(endDate, "d 'de' MMM", { locale: ptBR })}
-                          </>
-                        )}
-                      </p>
-                      <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
-                        {format(startDate, 'yyyy', { locale: ptBR })}
-                      </p>
-                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                      Data
+                    </p>
+                    <p className="text-lg font-bold text-foreground">
+                      {format(startDate, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                    </p>
+                    <p className="text-sm text-muted-foreground capitalize">
+                      {format(startDate, 'EEEE', { locale: ptBR })}
+                    </p>
                   </div>
                 </div>
 
-                {/* Time Card */}
-                <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/30 dark:to-purple-900/20 p-4 border border-purple-200/50 dark:border-purple-800/50">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg bg-purple-500/10 backdrop-blur-sm">
-                      <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                <div className="hidden sm:block w-px bg-border" />
+
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="flex-shrink-0 mt-1">
+                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Clock className="h-6 w-6 text-primary" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-1">
-                        Horário
-                      </p>
-                      <p className="text-sm font-semibold text-purple-900 dark:text-purple-100 leading-tight">
-                        {format(startDate, 'HH:mm', { locale: ptBR })}
-                      </p>
-                      <p className="text-xs text-purple-700 dark:text-purple-300 mt-0.5">
-                        até {format(endDate, 'HH:mm', { locale: ptBR })}
-                      </p>
-                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                      Horário
+                    </p>
+                    <p className="text-lg font-bold text-foreground">
+                      {format(startDate, 'HH:mm', { locale: ptBR })}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      até {format(endDate, 'HH:mm', { locale: ptBR })}
+                    </p>
                   </div>
                 </div>
-
-                {/* Location Card */}
-                {event.location && (
-                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20 p-4 border border-emerald-200/50 dark:border-emerald-800/50 sm:col-span-1">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-500/10 backdrop-blur-sm">
-                        <MapPin className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wide mb-1">
-                          Local
-                        </p>
-                        <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100 leading-tight line-clamp-2" title={event.location}>
-                          {event.location}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
+
+              {/* Location */}
+              {event.location && (
+                <div className="flex items-start gap-4 p-5 rounded-2xl bg-muted/50 border">
+                  <div className="flex-shrink-0 mt-1">
+                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <MapPin className="h-6 w-6 text-primary" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                      Local
+                    </p>
+                    <p className="text-base font-semibold text-foreground">
+                      {event.location}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Description */}
               {event.description && (
-                <div className="space-y-3 pt-2">
-                  <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-                    <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
-                    <span>Detalhes do Evento</span>
-                    <span className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+                <div className="space-y-3">
+                  <h3 className="text-lg font-bold text-foreground">
+                    Sobre o evento
                   </h3>
                   <div className="prose prose-sm max-w-none">
-                    <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed text-[15px]">
+                    <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
                       {event.description}
                     </p>
                   </div>
                 </div>
               )}
+
+              {/* Share Button */}
+              <div className="pt-4 border-t">
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={handleShare}
+                >
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Compartilhar evento
+                </Button>
+              </div>
 
               {/* Actions */}
               {actions && (

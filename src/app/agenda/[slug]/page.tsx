@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import { AgendaClient } from './agenda-client'
+import { PublicAgendaHeader } from '@/components/agenda/public-agenda-header'
+import { PublicAgendaClient } from '@/components/agenda/public-agenda-client'
+import { ThemeProvider } from '@/components/agenda/theme-provider'
 import { generateThemeVariables } from '@/lib/color-utils'
 
 interface PageProps {
@@ -48,30 +50,16 @@ export default async function AgendaPublicaPage({ params }: PageProps) {
   )
 
   return (
-    <div className="min-h-screen bg-background" style={themeVars as any}>
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <div className="mb-4 flex justify-center">
-            {tenantLogo ? (
-              <img
-                src={tenantLogo}
-                alt={tenantNome}
-                className="h-20 w-auto"
-              />
-            ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-                {tenantNome.charAt(0)}
-              </div>
-            )}
-          </div>
-          <h1 className="text-3xl font-bold">{tenantNome}</h1>
-          <p className="mt-2 text-muted-foreground">Agenda Pública</p>
-        </div>
+    <ThemeProvider themeVars={themeVars}>
+      <div className="min-h-screen bg-background">
+        {/* Hero Header */}
+        <PublicAgendaHeader tenantName={tenantNome} tenantLogo={tenantLogo} />
 
-        {/* Calendar */}
-        <AgendaClient events={events || []} />
+        {/* Events List */}
+        <div className="container mx-auto px-4 py-12">
+          <PublicAgendaClient events={events || []} slug={slug} />
+        </div>
       </div>
-    </div>
+    </ThemeProvider>
   )
 }

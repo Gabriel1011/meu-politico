@@ -51,10 +51,10 @@ export function AppearanceSettings({ tenant }: AppearanceSettingsProps) {
       // Upload para Supabase Storage
       const fileExt = file.name.split('.').pop()
       const fileName = `${tenant.id}-logo-${Date.now()}.${fileExt}`
-      const filePath = `logos/${fileName}`
+      const filePath = `${tenant.id}/logos/${fileName}`
 
       const { data, error } = await supabase.storage
-        .from('public')
+        .from('uploads')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: true,
@@ -65,7 +65,7 @@ export function AppearanceSettings({ tenant }: AppearanceSettingsProps) {
       // Obter URL pública
       const {
         data: { publicUrl },
-      } = supabase.storage.from('public').getPublicUrl(filePath)
+      } = supabase.storage.from('uploads').getPublicUrl(filePath)
 
       setLogoUrl(publicUrl)
       toast.success('Logo enviado com sucesso')

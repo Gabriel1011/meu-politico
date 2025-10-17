@@ -1,23 +1,21 @@
-'use client'
-
-import type { Database } from '@/types/database.types'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Calendar, Clock, MapPin, Eye, EyeOff } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { Calendar, Clock, MapPin } from 'lucide-react'
+import type { Database } from '@/types/database.types'
 import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
 type Event = Database['public']['Tables']['events']['Row']
 
-interface EventCardProps {
+interface PublicEventCardProps {
   event: Event
   onClick?: () => void
 }
 
-export function EventCard({ event, onClick }: EventCardProps) {
+export function PublicEventCard({ event, onClick }: PublicEventCardProps) {
   const startDate = new Date(event.start_date)
   const endDate = new Date(event.end_date)
-
+  
   const dayNumber = format(startDate, 'd', { locale: ptBR })
   const monthName = format(startDate, 'MMM', { locale: ptBR })
   const year = format(startDate, 'yyyy', { locale: ptBR })
@@ -51,25 +49,12 @@ export function EventCard({ event, onClick }: EventCardProps) {
         {/* Event content */}
         <div className="flex flex-1 flex-col p-6">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            {/* Status badges */}
-            {event.published ? (
-              <Badge variant="default">
-                <Eye className="mr-1.5 h-3 w-3" />
-                Público
-              </Badge>
-            ) : (
-              <Badge variant="secondary">
-                <EyeOff className="mr-1.5 h-3 w-3" />
-                Rascunho
-              </Badge>
-            )}
-
             {isHappening && (
               <Badge variant="destructive" className="animate-pulse">
                 Acontecendo agora
               </Badge>
             )}
-            {isUpcoming && <Badge variant="outline">Em breve</Badge>}
+            {isUpcoming && <Badge variant="secondary">Em breve</Badge>}
             {isPast && <Badge variant="outline">Realizado</Badge>}
           </div>
 
@@ -86,7 +71,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
               <Calendar className="h-4 w-4 shrink-0" />
               <span className="capitalize">{weekDay}</span>
             </div>
-
+            
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 shrink-0" />
               <span>

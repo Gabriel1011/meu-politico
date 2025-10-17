@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Save, Loader2, Building, Phone, Mail, MapPin, Facebook, Instagram, Globe } from 'lucide-react'
+import { Save, Loader2, Building, Phone, Mail, MapPin, Facebook, Instagram, Globe, Link2, ExternalLink, Copy } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -86,8 +86,59 @@ export function PublicInfoSettings({ tenant }: PublicInfoSettingsProps) {
     }
   }
 
+  const agendaUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/agenda/${tenant.slug}`
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(agendaUrl)
+    toast.success('Link copiado para a área de transferência')
+  }
+
   return (
     <div className="space-y-6">
+      {/* Link Público da Agenda */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Link2 className="h-5 w-5" />
+            Agenda Pública
+          </CardTitle>
+          <CardDescription>
+            Link público para compartilhar a agenda de eventos
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Link da Agenda</Label>
+            <div className="flex gap-2">
+              <Input
+                value={agendaUrl}
+                readOnly
+                className="font-mono text-sm"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleCopyLink}
+                title="Copiar link"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => window.open(agendaUrl, '_blank')}
+                title="Abrir em nova aba"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Compartilhe este link para que os cidadãos vejam a agenda pública de eventos
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Informações Básicas */}
       <Card>
         <CardHeader>

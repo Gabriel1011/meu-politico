@@ -102,7 +102,7 @@ export function AgendaManagementClient({
         .from('events')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('start_date', { ascending: true })
+        .order('start_date', { ascending: false })
 
       if (updatedEvents) {
         setEvents(updatedEvents)
