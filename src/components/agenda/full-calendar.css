@@ -3,9 +3,26 @@
 /* General Calendar Container */
 .fc {
   font-family: inherit;
-  --fc-border-color: #e5e7eb;
-  --fc-today-bg-color: #EFF6FF;
-  --fc-neutral-bg-color: #f9fafb;
+  --calendar-border: hsl(var(--border));
+  --calendar-muted: hsl(var(--muted));
+  --calendar-muted-foreground: hsl(var(--muted-foreground));
+  --calendar-neutral: color-mix(in srgb, var(--calendar-muted) 92%, white 8%);
+  --calendar-neutral-strong: color-mix(in srgb, var(--calendar-muted) 85%, white 15%);
+  --calendar-heading: hsl(var(--foreground));
+  --calendar-subtle-text: color-mix(in srgb, var(--calendar-muted-foreground) 85%, var(--calendar-heading) 15%);
+  --calendar-primary: hsl(var(--primary));
+  --calendar-primary-contrast: hsl(var(--primary-foreground));
+  --calendar-primary-soft: color-mix(in srgb, var(--calendar-primary) 12%, white 88%);
+  --calendar-primary-strong: color-mix(in srgb, var(--calendar-primary) 80%, black 20%);
+  --calendar-primary-glow: color-mix(in srgb, var(--calendar-primary) 25%, transparent);
+  --calendar-primary-glow-strong: color-mix(in srgb, var(--calendar-primary) 35%, transparent);
+  --calendar-secondary: hsl(var(--secondary));
+  --calendar-secondary-contrast: hsl(var(--secondary-foreground));
+  --calendar-secondary-soft: color-mix(in srgb, var(--calendar-secondary) 15%, white 85%);
+  --calendar-secondary-strong: color-mix(in srgb, var(--calendar-secondary) 70%, black 30%);
+  --fc-border-color: var(--calendar-border);
+  --fc-today-bg-color: var(--calendar-primary-soft);
+  --fc-neutral-bg-color: var(--calendar-neutral);
 }
 
 /* Toolbar - Header with buttons */
@@ -13,13 +30,13 @@
   margin-bottom: 1.5rem;
   gap: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--calendar-border);
 }
 
 .fc .fc-toolbar-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--calendar-heading);
   text-transform: capitalize;
 }
 
@@ -35,20 +52,20 @@
 }
 
 .fc .fc-button-primary {
-  background-color: #0D47A1;
-  border-color: #0D47A1;
-  color: white;
+  background-color: var(--calendar-primary);
+  border-color: var(--calendar-primary);
+  color: var(--calendar-primary-contrast);
 }
 
 .fc .fc-button-primary:hover:not(:disabled) {
-  background-color: #1565C0;
-  border-color: #1565C0;
-  box-shadow: 0 4px 6px -1px rgba(13, 71, 161, 0.2);
+  background-color: color-mix(in srgb, var(--calendar-primary) 85%, white 15%);
+  border-color: color-mix(in srgb, var(--calendar-primary) 85%, white 15%);
+  box-shadow: 0 4px 6px -1px var(--calendar-primary-glow);
   transform: translateY(-1px);
 }
 
 .fc .fc-button-primary:active:not(:disabled) {
-  background-color: #0D47A1;
+  background-color: color-mix(in srgb, var(--calendar-primary) 80%, black 20%);
   transform: translateY(0);
 }
 
@@ -58,8 +75,9 @@
 }
 
 .fc .fc-button-active {
-  background-color: #1565C0 !important;
-  border-color: #1565C0 !important;
+  background-color: color-mix(in srgb, var(--calendar-primary) 75%, black 25%) !important;
+  border-color: color-mix(in srgb, var(--calendar-primary) 75%, black 25%) !important;
+  color: var(--calendar-primary-contrast);
 }
 
 /* Button Group Spacing */
@@ -78,12 +96,12 @@
 }
 
 .fc .fc-daygrid-day:hover {
-  background-color: #f8fafc;
+  background-color: var(--calendar-neutral-strong);
 }
 
 .fc .fc-daygrid-day.fc-day-today {
   background-color: var(--fc-today-bg-color) !important;
-  border: 2px solid #93C5FD;
+  border: 2px solid color-mix(in srgb, var(--calendar-primary) 45%, white 55%);
   font-weight: 600;
 }
 
@@ -91,31 +109,31 @@
   padding: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #475569;
+  color: var(--calendar-muted-foreground);
 }
 
 .fc .fc-day-today .fc-daygrid-day-number {
-  color: #0D47A1;
+  color: var(--calendar-primary);
   font-weight: 700;
   font-size: 0.938rem;
 }
 
 /* Column Headers - Days of week */
 .fc .fc-col-header-cell {
-  background-color: #f1f5f9;
+  background-color: var(--calendar-muted);
   padding: 1rem 0.5rem;
   font-weight: 600;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
-  border-color: #e2e8f0;
+  color: var(--calendar-muted-foreground);
+  border-color: var(--calendar-border);
 }
 
 .fc .fc-col-header-cell-cushion {
   padding: 0.75rem 0.5rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--calendar-heading);
 }
 
 /* Events - Event items in calendar */
@@ -159,32 +177,42 @@
 }
 
 .fc .fc-h-event .fc-event-main {
-  color: white;
+  color: inherit;
   padding: 0.125rem 0.25rem;
 }
 
 /* Published Events - Blue with stronger presence */
 .fc .event-published {
-  background: linear-gradient(135deg, #1565C0 0%, #1976D2 100%) !important;
-  border-left: 4px solid #0D47A1 !important;
-  box-shadow: 0 2px 6px 0 rgba(13, 71, 161, 0.25);
+  background: linear-gradient(
+    135deg,
+    var(--calendar-primary) 0%,
+    color-mix(in srgb, var(--calendar-primary) 80%, white 20%) 100%
+  ) !important;
+  border-left: 4px solid var(--calendar-primary-strong) !important;
+  box-shadow: 0 2px 6px 0 var(--calendar-primary-glow);
+  color: var(--calendar-primary-contrast);
 }
 
 .fc .event-published:hover {
-  box-shadow: 0 6px 16px -2px rgba(13, 71, 161, 0.35);
+  box-shadow: 0 6px 16px -2px var(--calendar-primary-glow-strong);
 }
 
 /* Draft Events - Gray with subtle presence */
 .fc .event-draft {
-  background: linear-gradient(135deg, #78909C 0%, #90A4AE 100%) !important;
-  border-left: 4px solid #546E7A !important;
-  box-shadow: 0 2px 4px 0 rgba(84, 110, 122, 0.2);
+  background: linear-gradient(
+    135deg,
+    var(--calendar-secondary) 0%,
+    color-mix(in srgb, var(--calendar-secondary) 82%, white 18%) 100%
+  ) !important;
+  border-left: 4px solid var(--calendar-secondary-strong) !important;
+  box-shadow: 0 2px 4px 0 color-mix(in srgb, var(--calendar-secondary) 25%, transparent);
   opacity: 0.85;
+  color: var(--calendar-secondary-contrast);
 }
 
 .fc .event-draft:hover {
   opacity: 1;
-  box-shadow: 0 6px 12px -2px rgba(84, 110, 122, 0.3);
+  box-shadow: 0 6px 12px -2px color-mix(in srgb, var(--calendar-secondary) 35%, transparent);
 }
 
 .fc .event-draft .fc-event-title {
@@ -196,6 +224,11 @@
   border-width: 4px;
   border-radius: 50%;
   margin: 0 4px;
+  border-color: var(--calendar-primary);
+}
+
+.fc .event-draft .fc-daygrid-event-dot {
+  border-color: var(--calendar-secondary);
 }
 
 /* Time Grid - Week/Day view */
@@ -205,7 +238,7 @@
 
 .fc .fc-timegrid-slot-label {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--calendar-subtle-text);
   text-transform: lowercase;
 }
 
@@ -217,7 +250,7 @@
 
 /* More Link - "+X more" link */
 .fc .fc-daygrid-more-link {
-  color: #0D47A1;
+  color: var(--calendar-primary);
   font-weight: 600;
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
@@ -226,22 +259,22 @@
 }
 
 .fc .fc-daygrid-more-link:hover {
-  background-color: #EFF6FF;
+  background-color: var(--calendar-primary-soft);
 }
 
 /* Popover - Event popover on more click */
 .fc .fc-popover {
   border-radius: 0.5rem;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--calendar-border);
 }
 
 .fc .fc-popover-header {
-  background-color: #f9fafb;
+  background-color: var(--calendar-neutral);
   padding: 0.75rem 1rem;
   border-radius: 0.5rem 0.5rem 0 0;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--calendar-heading);
 }
 
 /* Scrollbars */
@@ -251,17 +284,17 @@
 }
 
 .fc-scroller::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: var(--calendar-muted);
   border-radius: 4px;
 }
 
 .fc-scroller::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: color-mix(in srgb, var(--calendar-muted-foreground) 35%, transparent);
   border-radius: 4px;
 }
 
 .fc-scroller::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: color-mix(in srgb, var(--calendar-muted-foreground) 55%, transparent);
 }
 
 /* Responsive adjustments */

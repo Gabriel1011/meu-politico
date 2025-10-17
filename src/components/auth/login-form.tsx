@@ -22,10 +22,6 @@ export function LoginForm() {
     setLoading(true)
     setError(null)
 
-    console.log('🔐 [Login] Iniciando autenticação...')
-    console.log('📧 [Login] Email:', email)
-    console.log('🌍 [Login] NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-
     try {
       const supabase = createClient()
       console.log('✅ [Login] Cliente Supabase criado')
@@ -43,6 +39,7 @@ export function LoginForm() {
       }
 
       console.log('✅ [Login] Autenticação bem-sucedida, redirecionando...')
+
       router.push('/painel')
       router.refresh()
     } catch (err) {
@@ -50,9 +47,7 @@ export function LoginForm() {
       const appError = logError(err, 'LoginForm.handleSubmit')
       console.error('📝 [Login] Mensagem de erro processada:', appError.userMessage)
       setError(appError.userMessage)
-    } finally {
       setLoading(false)
-      console.log('🏁 [Login] Processo finalizado')
     }
   }
 

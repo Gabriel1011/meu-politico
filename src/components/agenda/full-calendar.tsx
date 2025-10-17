@@ -32,9 +32,6 @@ export function FullCalendarView({
     title: event.title,
     start: event.start_date,
     end: event.end_date,
-    backgroundColor: event.published ? '#1565C0' : '#78909C',
-    borderColor: event.published ? '#0D47A1' : '#546E7A',
-    textColor: '#ffffff',
     classNames: event.published ? ['event-published'] : ['event-draft'],
     extendedProps: {
       ...event

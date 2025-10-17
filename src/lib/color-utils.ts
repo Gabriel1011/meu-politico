@@ -123,11 +123,14 @@ export function generateThemeVariables(cores: TenantColors) {
   const primaryHSL = hexToHSL(cores.primaria)
   const primaryForeground = getForegroundColor(cores.primaria)
   const secondaryHSL = hexToHSL(cores.secundaria)
+  const secondaryForeground = getForegroundColor(cores.secundaria)
 
   return {
     '--primary': primaryHSL,
     '--primary-foreground': primaryForeground,
     '--secondary': secondaryHSL,
+    '--secondary-foreground': secondaryForeground,
     '--accent': secondaryHSL,
+    '--accent-foreground': secondaryForeground,
   }
 }
