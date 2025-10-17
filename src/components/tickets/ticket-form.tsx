@@ -12,6 +12,7 @@ import { logError } from '@/lib/error-handler'
 import { UPLOAD } from '@/lib/constants'
 import type { Category } from '@/types'
 import { createClient } from '@/lib/supabase/client'
+import { GoogleMapsDialog } from '@/components/location/google-maps-dialog'
 
 const normalizeCep = (value: string) => value.replace(/\D/g, '').slice(0, 8)
 
@@ -50,6 +51,7 @@ export function TicketForm({ onSuccess }: TicketFormProps = {}) {
     descricao: '',
     categoria_id: '',
     bairro: '',
+    complemento: '',
     cep: '',
     logradouro: '',
     cidade: '',
@@ -188,6 +190,7 @@ export function TicketForm({ onSuccess }: TicketFormProps = {}) {
           const locationEntries = Object.entries({
             cep: formData.cep || undefined,
             logradouro: formData.logradouro || undefined,
+            complemento: formData.complemento || undefined,
             bairro: formData.bairro || undefined,
             cidade: formData.cidade || undefined,
             estado: formData.estado || undefined,
@@ -198,6 +201,7 @@ export function TicketForm({ onSuccess }: TicketFormProps = {}) {
           return Object.fromEntries(locationEntries) as {
             cep?: string
             logradouro?: string
+            complemento?: string
             bairro?: string
             cidade?: string
             estado?: string
@@ -219,6 +223,15 @@ export function TicketForm({ onSuccess }: TicketFormProps = {}) {
     } finally {
       setLoading(false)
     }
+  }
+
+  const locationForMap = {
+    cep: formData.cep,
+    logradouro: formData.logradouro,
+    complemento: formData.complemento,
+    bairro: formData.bairro,
+    cidade: formData.cidade,
+    estado: formData.estado,
   }
 
   if (authLoading) return <FormSkeleton />
@@ -358,6 +371,25 @@ export function TicketForm({ onSuccess }: TicketFormProps = {}) {
           />
         </div>
         <div>
+          <Label htmlFor="complemento">Complemento</Label>
+          <Input
+            id="complemento"
+            value={formData.complemento}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                complemento: e.target.value,
+              }))
+            }
+            placeholder="Ex: Apto 101, Bloco B"
+            className="mt-1"
+            disabled={loading}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
           <Label htmlFor="bairro">Bairro</Label>
           <Input
             id="bairro"
@@ -370,9 +402,6 @@ export function TicketForm({ onSuccess }: TicketFormProps = {}) {
             disabled={loading}
           />
         </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="cidade">Cidade</Label>
           <Input
@@ -386,24 +415,33 @@ export function TicketForm({ onSuccess }: TicketFormProps = {}) {
             disabled={loading}
           />
         </div>
-        <div>
-          <Label htmlFor="estado">Estado</Label>
-          <Input
-            id="estado"
-            value={formData.estado}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                estado: e.target.value.toUpperCase(),
-              }))
-            }
-            placeholder="Ex: SP"
-            className="mt-1 uppercase"
-            maxLength={2}
-            disabled={loading}
-          />
-        </div>
       </div>
+
+      <div>
+        <Label htmlFor="estado">Estado</Label>
+        <Input
+          id="estado"
+          value={formData.estado}
+          onChange={(e) =>
+            setFormData((prev) => ({
+              ...prev,
+              estado: e.target.value.toUpperCase(),
+            }))
+          }
+          placeholder="Ex: SP"
+          className="mt-1 uppercase"
+          maxLength={2}
+          disabled={loading}
+        />
+      </div>
+
+      <GoogleMapsDialog
+        location={locationForMap}
+        triggerLabel="Visualizar no mapa"
+        buttonVariant="outline"
+        buttonSize="sm"
+        buttonClassName="self-start"
+      />
 
       <div>
         <Label htmlFor="fotos">Fotos (opcional)</Label>

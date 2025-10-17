@@ -56,6 +56,7 @@ const nextConfig: NextConfig = {
               "font-src 'self' data:",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
               "worker-src 'self' blob:",
+              "frame-src 'self' https://maps.google.com https://www.google.com https://www.google.com.br",
               "manifest-src 'self'",
               "frame-ancestors 'none'",
               "base-uri 'self'",

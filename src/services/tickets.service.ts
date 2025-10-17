@@ -33,6 +33,7 @@ export interface TicketLocationData {
   [key: string]: string | undefined
   cep?: string
   logradouro?: string
+  complemento?: string
   bairro?: string
   cidade?: string
   estado?: string

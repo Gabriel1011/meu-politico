@@ -26,6 +26,7 @@ import { ticketsService } from '@/services/tickets.service'
 import { logError } from '@/lib/error-handler'
 import { useUserContext } from '@/hooks/use-user-context'
 import type { TicketWithRelations, TicketStatus, UserRole } from '@/types'
+import { GoogleMapsDialog } from '@/components/location/google-maps-dialog'
 
 // Status config (ClickUp-inspired)
 const STATUS_CONFIG = {
@@ -311,6 +312,13 @@ export function TicketDetailModal({
                               {locationLabel}
                             </span>
                           </div>
+                          <GoogleMapsDialog
+                            location={ticket.localizacao}
+                            triggerLabel="Abrir no mapa"
+                            buttonVariant="link"
+                            buttonSize="sm"
+                            buttonClassName="justify-start px-0"
+                          />
                         </div>
                       )}
                     </div>
@@ -481,17 +489,24 @@ export function TicketDetailModal({
                     </div>
 
                     {/* Location */}
-                    {locationLabel && (
-                      <div className="flex flex-col gap-2">
-                        <span className="text-sm font-medium text-muted-foreground">Localização</span>
-                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-md border bg-muted/50">
-                          <MapPin className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-medium">
-                            {locationLabel}
-                          </span>
+                      {locationLabel && (
+                        <div className="flex flex-col gap-2">
+                          <span className="text-sm font-medium text-muted-foreground">Localização</span>
+                          <div className="flex items-center gap-2 px-4 py-2.5 rounded-md border bg-muted/50">
+                            <MapPin className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-medium">
+                              {locationLabel}
+                            </span>
+                          </div>
+                          <GoogleMapsDialog
+                            location={ticket.localizacao}
+                            triggerLabel="Abrir no mapa"
+                            buttonVariant="link"
+                            buttonSize="sm"
+                            buttonClassName="justify-start px-0"
+                          />
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
                 </div>
 

@@ -1,6 +1,7 @@
 export interface TicketLocation {
   cep?: string | null
   logradouro?: string | null
+  complemento?: string | null
   bairro?: string | null
   cidade?: string | null
   estado?: string | null
@@ -15,12 +16,13 @@ export function formatTicketLocation(location: unknown): string | null {
   const casted = location as TicketLocation
 
   const logradouro = sanitize(casted.logradouro)
+  const complemento = sanitize(casted.complemento)
   const bairro = sanitize(casted.bairro)
   const cidade = sanitize(casted.cidade)
   const estado = sanitize(casted.estado)
   const cep = sanitize(casted.cep)
 
-  const streetPart = [logradouro, bairro].filter(Boolean).join(', ')
+  const streetPart = [logradouro, complemento, bairro].filter(Boolean).join(', ')
   const cityPart = [cidade, estado].filter(Boolean).join(' / ')
   const cepPart = cep ? `CEP ${cep}` : ''
 
@@ -29,4 +31,23 @@ export function formatTicketLocation(location: unknown): string | null {
   if (parts.length === 0) return null
 
   return parts.join(' • ')
+}
+
+export function buildLocationAddress(location: unknown): string | null {
+  if (!location || typeof location !== 'object') return null
+
+  const casted = location as TicketLocation
+
+  const parts = [
+    sanitize(casted.logradouro),
+    sanitize(casted.complemento),
+    sanitize(casted.bairro),
+    sanitize(casted.cidade),
+    sanitize(casted.estado),
+    sanitize(casted.cep),
+  ].filter(Boolean)
+
+  if (parts.length === 0) return null
+
+  return parts.join(', ')
 }
